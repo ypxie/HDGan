@@ -2,22 +2,29 @@
 import numpy as np
 import argparse, os
 import torch, h5py
+sys.path.insert(0, os.path.join('..','..'))
+
+home = os.path.expanduser("~")
+proj_root = os.path.join('..','..')
+
+data_root  = os.path.join(proj_root, 'Data')
+model_root = os.path.join(proj_root, 'Models')
+
 
 import torch.nn as nn
 from collections import OrderedDict
 
-from .trainNeuralDist  import train_nd
-from .neuralDistModel  import ImgSenRanking
-from .neuralDistModel  import ImageEncoder
-
-from ..fuel.datasets import TextDataset
+from HDGan.neuralDist.trainNeuralDist  import train_nd
+from HDGan.neuralDist.neuralDistModel  import ImgSenRanking
+from HDGan.neuralDist.neuralDistModel  import ImageEncoder
+from HDGan.fuel.datasets import TextDataset
 
 def train_worker(data_root, model_root, training_dict):
 
     dim_image   =  training_dict.get('dim_image', 1536) 
     sent_dim    =  training_dict.get('sent_dim', 1024) 
     hid_dim     =  training_dict.get('hid_dim', 512) 
-
+    
     parser = argparse.ArgumentParser(description = 'NeuralDist')    
     parser.add_argument('--weight_decay', type=float, default= 0,
                         help='weight decay for training')
@@ -42,11 +49,9 @@ def train_worker(data_root, model_root, training_dict):
                         help='batch size.')
     parser.add_argument('--num_emb', type=int, default=1, metavar='N',
                         help='number of emb chosen for each image.')
-
     ## add more
     parser.add_argument('--device_id', type=int, default=training_dict['device_id'], 
                         help='which device')
-
 
     parser.add_argument('--load_from_epoch', type=int, default= training_dict['load_from_epoch'], 
                         help='load from epoch')

@@ -23,12 +23,12 @@ if  __name__ == '__main__':
 
     parser.add_argument('--reuse_weights',    action='store_true',  default= False, help='continue from last checkout point')
     parser.add_argument('--load_from_epoch', type=int, default= 0,  help='load from epoch')
-    
+
     parser.add_argument('--batch_size', type=int,      default= 16, metavar='N', help='batch size.')
     parser.add_argument('--device_id',  type=int,      default= 0,  help='which device')
     
-    parser.add_argument('--model_name', type=str,      default= 'flowers_model')
-    parser.add_argument('--dataset',    type=str,      default= 'flowers', help='which dataset to use [birds or flowers]') 
+    parser.add_argument('--model_name', type=str,      default= None)
+    parser.add_argument('--dataset',    type=str,      default= None, help='which dataset to use [birds or flowers]') 
     
     parser.add_argument('--num_resblock', type=int, default = 1, help='number of resblock')
     parser.add_argument('--epoch_decay', type=float, default=100, help='decay learning rate by half every epoch_decay')
@@ -76,8 +76,7 @@ if  __name__ == '__main__':
         netG = netG.cuda(device_id)
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
-    
-
+        
     print ('>> initialize dataset')
     dataset = TextDataset(datadir, 'cnn-rnn', 4)
     filename_test = os.path.join(datadir, 'test')

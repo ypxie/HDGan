@@ -7,8 +7,6 @@ home = os.path.expanduser('~')
 proj_root = os.path.join('..','..')
 save_root  =  os.path.join(proj_root, 'Data', 'Results')
 
-import torch.multiprocessing as mp
-from HDGan.proj_utils.local_utils import Indexflow
 from HDGan.test_worker import test_worker
 
 if 1: # FINAL Model
@@ -27,25 +25,7 @@ if 1: # FINAL Model
                     'device_id': 0,'imsize':[64,128, 256], 'model_name':'flower_256',
                     'train_mode': False,  'save_spec': save_spec, 'batch_size': 2, 'which_gen': 'origin',
                      'which_disc':'origin', 'reduce_dim_at':[8, 32, 128, 256] }
-                 
-training_pool = np.array([
-                  final_model_original_birds,
-                  final_model_original_flowers
-                 ])
 
-show_progress = 0
-processes = []
-Totalnum = len(training_pool)
+test_worker(data_root, model_root, save_root, final_model_original_birds)
 
-for select_ind in Indexflow(Totalnum, 4, random=False):
-    select_pool = training_pool[select_ind]
-
-    for this_dick in select_pool:
-
-        p = mp.Process(target=test_worker, args= (data_root, model_root, save_root, this_dick) )
-        p.start()
-        processes.append(p)
-    for p in processes:
-        p.join()
-    print('Finish the round with: ', select_ind)
-
+test_worker(data_root, model_root, save_root, final_model_original_flowers)

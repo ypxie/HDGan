@@ -58,8 +58,8 @@ def to_device(src, ref, var = True, volatile = False, requires_grad=True):
     src = to_variable(src, var=var, volatile=volatile,requires_grad=requires_grad)
     return src.cuda(ref.get_device()) if ref.is_cuda else src
 
-def branch_out2(in_dim, out_dim=3):
-    _layers = [nn.ReflectionPad2d(1),
+def branch_out(in_dim, out_dim=3):
+    _layers = [ nn.ReflectionPad2d(1),
                 nn.Conv2d(in_dim, out_dim, 
                 kernel_size = 3, padding=0, bias=False)]    
     _layers += [nn.Tanh()]
@@ -113,16 +113,7 @@ class condEmbedding(nn.Module):
         else:
             return out, 0
 
-def genAct():
-    return nn.ReLU(True)
-def discAct():
-    return nn.LeakyReLU(0.2, True)
-def get_activation_layer(name):
-    if name == 'lrelu':
-        act_layer = nn.LeakyReLU(0.2, inplace=True)
-    else:
-        act_layer = nn.ReLU(True)
-    return act_layer
+
     
 def pad_conv_norm(dim_in, dim_out, norm_layer, kernel_size=3, use_activation=True, 
                   use_bias=False, activation=nn.ReLU(True)):

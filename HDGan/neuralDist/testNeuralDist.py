@@ -30,7 +30,6 @@ def get_trans(img_encoder):
     
     trans = transforms.Compose([
                 transforms.ToTensor(),
-                #transforms.RandomSizedCrop(224),
                 transforms.Normalize(mean=img_encoder.mean, std=img_encoder.std),
                 ])
     return trans
@@ -115,16 +114,15 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
                 
                 embeddings  =  to_device(np_embeddings, vs_model.device_id, volatile=True)
                 img_299     =  to_device(img_299, img_encoder.device_id, volatile=True)
-                #print(">> start img encoding")
+               
                 img_feat    =  img_encoder(img_299)
-                #print(">> Finished img encoding")
+                
                 img_feat    =  img_feat.squeeze(-1).squeeze(-1)
 
-                #print("img_feat size: ", img_feat.size())
                 img_feat   = to_device(img_feat.data,vs_model.device_id, volatile=True)
 
                 sent_emb, img_emb = vs_model(embeddings, img_feat)
-                #cost = calculate_dist(img_emb, sent_emb)
+                
                 cost     = torch.sum(img_emb*sent_emb, 1, keepdim=False)
                 cost_val = cost.cpu().data.numpy()
                 all_cost_list.append(cost_val)

@@ -1,45 +1,90 @@
-import os
-import sys, os
+# -*- coding: utf-8 -*-
 import numpy as np
+import argparse, os, sys
+import torch, h5py
 sys.path.insert(0, os.path.join('..','..'))
 
 home = os.path.expanduser("~")
 proj_root = os.path.join('..','..')
-
 data_root  = os.path.join(proj_root, 'Data')
 model_root = os.path.join(proj_root, 'Models')
 
-import torch.multiprocessing as mp
+import torch.nn as nn
+from collections import OrderedDict
 
-from HDGan.proj_utils.local_utils import Indexflow
-from HDGan.train_worker import train_worker
+from HDGan.models.hd_networks import Generator
+from HDGan.models.hd_networks import Discriminator 
 
-# model will be saved to os.path.join(model_root, model_sub_folder)
-# model_sub_folder ='{}_{}_{}'.format(args.model_name, dataset, args.imsize)
+from HDGan.HDGan import train_gans
+from HDGan.fuel.datasets import TextDataset
 
-local_bug_64_128_256  = {   'reuse_weights': False, 'batch_size': 16, 'device_id': 0, 
-                            'dataset':'birds', 'g_lr': .0002/(2**0),'d_lr': .0002/(2**0), 
-                            'imsize':[64, 128, 256], 'load_from_epoch': 0, 
-                            'which_gen': 'origin', 'which_disc':'local', 
-                            'model_name':'your_model_name', 
-                            'reduce_dim_at':[8, 32, 128, 256]}
-                            
-training_pool = np.array([
-                          local_bug_64_128_256
-                         ])
+if  __name__ == '__main__':
+    parser = argparse.ArgumentParser(description = 'Gans')    
 
-processes = []
-Totalnum = len(training_pool)
-
-for select_ind in Indexflow(Totalnum, 2, random=False):
-    select_pool = training_pool[select_ind]
-    print('selcted training pool: ', select_pool)
+    parser.add_argument('--reuse_weights',    action='store_true',  default= False, help='continue from last checkout point')
+    parser.add_argument('--load_from_epoch', type=int, default= 0,  help='load from epoch')
     
-    for this_epoch in select_pool:
-        p = mp.Process(target=train_worker, args= (data_root, model_root, this_epoch) )
-        p.start()
-        processes.append(p)
-    for p in processes:
-        p.join()
-    print('Finish the round with', select_pool)
+    parser.add_argument('--batch_size', type=int,      default= 16, metavar='N', help='batch size.')
+    parser.add_argument('--device_id',  type=int,      default= 0,  help='which device')
+    
+    parser.add_argument('--model_name', type=str,      default= 'birds_model')
+    parser.add_argument('--dataset',    type=str,      default= 'birds', help='which dataset to use [birds or flowers]') 
+    
+    parser.add_argument('--num_resblock', type=int, default = 1, help='number of resblock')
+    parser.add_argument('--epoch_decay', type=float, default=100, help='decay learning rate by half every epoch_decay')
 
+    
+    parser.add_argument('--maxepoch', type=int, default=600, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--g_lr', type=float, default = 0.0002, metavar='LR',
+                        help='learning rate ')
+    parser.add_argument('--d_lr', type=float, default = 0.0002, metavar='LR',
+                        help='learning rate ')
+    parser.add_argument('--save_freq', type=int, default= 3, metavar='N',
+                        help='how frequent to save the model')
+    parser.add_argument('--display_freq', type=int, default= 200, metavar='N',
+                        help='plot the results every {} batches')
+    parser.add_argument('--verbose_per_iter', type=int, default= 50, 
+                        help='print losses per iteration')
+    parser.add_argument('--num_emb', type=int, default=4, metavar='N',
+                        help='number of emb chosen for each image.')
+    parser.add_argument('--ncritic', type=int, default= 1, metavar='N',
+                        help='the channel of each image.')
+    parser.add_argument('--test_sample_num', type=int, default=4, 
+                        help='The number of runs for each embeddings when testing')
+    parser.add_argument('--KL_COE', type=float, default= 4, metavar='N',
+                        help='kl divergency coefficient.')
+    ## add more
+    args = parser.parse_args()
+    args.cuda  = torch.cuda.is_available()
+    
+    data_name  = args.dataset
+    datadir = os.path.join(data_root, data_name)
+
+    # Generator
+    netG = Generator(sent_dim=1024, noise_dim=100, emb_dim=128, hid_dim=128, num_resblock = 2)
+    
+    # Discriminator
+    netD = Discriminator(num_chan = 3, hid_dim = 128, sent_dim=1024, emb_dim=128)
+    
+    print(args)
+
+    device_id = getattr(args, 'device_id', 0)
+
+    if args.cuda:
+        netD = netD.cuda(device_id)
+        netG = netG.cuda(device_id)
+        import torch.backends.cudnn as cudnn
+        cudnn.benchmark = True
+    
+    print ('>> initialize dataset')
+    dataset = TextDataset(datadir, 'cnn-rnn', 4)
+    filename_test = os.path.join(datadir, 'test')
+    dataset.test = dataset.get_data(filename_test)
+    filename_train = os.path.join(datadir, 'train')
+    dataset.train = dataset.get_data(filename_train)
+    
+    model_name ='{}_{}_{}'.format(args.model_name, data_name, args.imsize)
+    print ('>> START training ')
+    train_gans(dataset, model_root, model_name, netG, netD, args)
+    

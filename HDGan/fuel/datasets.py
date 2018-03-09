@@ -6,6 +6,12 @@ import sys
 import scipy.misc as misc
 from ..proj_utils.local_utils import imresize_shape
 
+#-------------------------------------------------------------------------#
+# dataloader for birds and flowers is modified from https://github.com/hanzhanggit/StackGAN
+# don't batch size 1
+#-------------------------------------------------------------------------#
+
+
 def resize_images(tensor, shape):
     out = []
     for k in range(tensor.shape[0]):
@@ -13,7 +19,7 @@ def resize_images(tensor, shape):
         out.append(tmp[np.newaxis,:,:,:])
     return np.concatenate(out, axis=0).transpose((0,3,1,2))
 
-# bugs if you use batch size 1
+
 class Dataset(object):
     def __init__(self, images, imsize, embeddings=None,
                  filenames=None, workdir=None,
@@ -224,7 +230,6 @@ class Dataset(object):
             #sampled_embeddings_batchs.append(np.squeeze(batch))
         return [sampled_images, sampled_embeddings_batchs, self._saveIDs[start:end],
                  self._class_id[start:end], sampled_captions]
-
 
 class TextDataset(object):
     def __init__(self, workdir, embedding_type, hr_lr_ratio):
