@@ -1,4 +1,4 @@
-# Hollistic GAN implementaiton
+## Hierarchically-nested Adversarial Network
 
 This is a Pytorch implementation of HD GAN for reproducing main results in the paper:
 > [Z.Zhang*, Y. Xie*, L. Yang. "Photographic Text-to-Image Synthesis with a Hierarchically-nested Adversarial Network." CVPR (2018)](link)
