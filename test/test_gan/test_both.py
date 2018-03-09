@@ -17,13 +17,13 @@ if 1: # FINAL Model
     model_root = os.path.join(proj_root, 'Models')
     #10;
     final_model_original_birds  =   \
-                   { 'test_sample_num' : 1,  'load_from_epoch': 500, 'dataset':'birds', "save_images":True, 
+                   { 'test_sample_num' : 10,  'load_from_epoch': 500, 'dataset':'birds', "save_images":True, 
                      'device_id': 0, 'imsize':[64,128, 256], 'model_name':'birds_256',
                      'train_mode': False,  'save_spec': save_spec, 'batch_size': 2, 'which_gen': 'origin',
                      'which_disc':None, 'reduce_dim_at':[8, 32, 128, 256] }
     #26                 
     final_model_original_flowers  =   \
-                   {'test_sample_num' : 1,  'load_from_epoch': 580, 'dataset':'flowers', "save_images":True, 
+                   {'test_sample_num' : 26,  'load_from_epoch': 580, 'dataset':'flowers', "save_images":True, 
                     'device_id': 0,'imsize':[64,128, 256], 'model_name':'flower_256',
                     'train_mode': False,  'save_spec': save_spec, 'batch_size': 2, 'which_gen': 'origin',
                      'which_disc':'origin', 'reduce_dim_at':[8, 32, 128, 256] }
