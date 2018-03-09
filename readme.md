@@ -16,8 +16,8 @@ Anaconda 3.6
 Download our preprocessed data from [birds](https://www.dropbox.com/sh/v0vcgwue2nkwgrf/AACxoRYTAAacmPVfEvY-eDzia?dl=0), and [flowers](https://www.dropbox.com/sh/g8rmz41xblaszb1/AABPNtIcLu1fKNoBsJTHJTIKa?dl=0), save them to Data/birds and Data/flowers, respectively.
 
 ## Training
-- For bird: Goto train/train_gan:    `python train_bird.py`
-- For flower: Goto train/train_gan:  `python train_flower.py`
+- For bird:   goto train/train_gan:    `python train_bird.py`
+- For flower: goto train/train_gan:  `python train_flower.py`
 
 ## Testing
 - To generate images, goto test/test_gan:   `python test_both`
