@@ -59,7 +59,7 @@ def train_worker(data_root, model_root, training_dict):
                         help='load from epoch')
     parser.add_argument('--model_name', type=str, default= 'neural_dist')
 
-    parser.add_argument('--dataset', type=str, default=None, help='which dataset to use [birds or flowers]') 
+    parser.add_argument('--dataset', type=str, default= 'flowers', help='which dataset to use [birds or flowers]') 
 
     parser.add_argument('--margin',  default = 0.2, help='which devices to parallel the data')
 
