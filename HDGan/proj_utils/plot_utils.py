@@ -11,40 +11,28 @@ from scipy.misc import imsave
 from .local_utils import imshow, writeImg, normalize_img
 _port = 8899
 
-def display_loss(steps, values, plot=None, name='default', legend= None, port=_port):
-    if plot is None:
-        plot = Visdom(port=port)
-    if type(steps) is not list:
-        steps = [steps]
-    assert type(values) is list, 'values have to be list'
-    if type(values[0]) is not list:
-        values = [values]
-
-    n_lines = len(values)
-    repeat_steps = [steps]*n_lines
-    steps  = np.array(repeat_steps).transpose()
-    values = np.array(values).transpose()
-    win = name + '_loss'
-    res = plot.line(
-            X = steps,
-            Y=  values,
-            win= win,
-            update='append',
-            opts=dict(title = win, legend=legend),
-            env = name
-        )
-    if res != win:
-        plot.line(
-            X=steps,
-            Y=values,
-            win=win,
-            opts=dict(title=win, legend=legend),
-            env=name
-        )
-
+#---------------------------------------#
+#      Class used for plotting loss     #
+#      plot_cls = plot_scalar()         #
+#      plot_cls.plot(your_loss)         #
+#---------------------------------------#
 class plot_scalar(object):
     def __init__(self, name='default', env='main', rate= 1, handler=None, port = _port):
+        """
+        Parameters:
+        ----------
+        name: str
+            name of the plot window.
+        env: str
+            visdom environment specifier
+        rate : int
+            rate for refrashing plot.
+        handler:  Visdom
+            if not specified, will call Visdom().
+        port:  int
+            plotting port, default=8899
 
+        """
         self.__dict__.update(locals())
         self.values = []
         self.steps = []
@@ -116,54 +104,6 @@ def plot_img(X=None, win= None, env=None, plot=None,port=_port):
         norm_img = normalize_img(X)
         plot.image(norm_img.transpose(2,0,1), win=win,
                    opts=dict(title=win), env=env)
-
-def display_timeseries(strumodel, BatchData, BatchLabel, plot=None, name='default', port=_port):
-    if plot is None:
-        plot = Visdom(port=port)
-    B, T, C, W, H = BatchData.shape
-    pred_T = BatchLabel.shape[1]
-
-    batch_id =  random.randint(0, B-1)
-    intv = 9
-
-    data_len = min(10, T)
-    pred_len = min(10, pred_T)
-    #sel_t = random.randint(0, T-len)
-
-    inputdata  = BatchData[batch_id:batch_id+1,...]
-    prediction = strumodel.predict(inputdata)
-    labeldata  = BatchLabel[batch_id:batch_id+1,...]
-
-    images_shape = (W, int( data_len*(H+intv) - intv  ))
-    label_shape   = (W, int( pred_len*(H+intv) - intv  ))
-    batch_content = np.zeros(images_shape)
-    predict_content = np.zeros(label_shape)
-    label_content = np.zeros(label_shape)
-    #fill the image
-    for idx in range(data_len):
-        rs, cs = 0, idx*(H+intv)
-        batch_content[rs:rs+W,  cs:cs+H]   = inputdata[0,idx,0]
-       
-    for idx in range(pred_len):
-        rs, cs = 0, idx*(H+intv)
-        predict_content[rs:rs+W,  cs:cs+H] = prediction[0,idx,0]
-        label_content[rs:rs+W,  cs:cs+H]   = labeldata[0,idx,0]
-
-    diff_abs = np.abs(predict_content - label_content)  # we do this intentionally to do sanity check
-    #diff_ratio = diff_abs/(np.abs(label_content) + 1)
-
-    #imshow(predict_content)
-    #imshow(label_content)
-    plot.heatmap(X = np.flipud(batch_content), win = name + '_OriginalImage',
-           opts=dict(title = name + '_OriginalImage'), env = name)
-    plot.heatmap(X = np.flipud(label_content), win = name + '_GroundTruth',
-           opts=dict(title = name + '_GroundTruth'), env = name)
-    plot.heatmap(X = np.flipud(predict_content), win = name + '_Prediction',
-           opts=dict(title = name + '_Prediction'), env = name)
-    #plot.heatmap(X = diff_abs, win = name + '_diff_abs',
-    #       opts=dict(title = name + '_diff_abs'), env = name)
-    #plot.heatmap(X = diff_ratio, win = name + '_diff_ratio',
-    #       opts=dict(title = name + '_diff_ratio'), env = name)
 
 def save_images(X, save_path=None, save=True, dim_ordering='tf'):
     # X: B*C*H*W or list of X

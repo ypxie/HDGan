@@ -3,8 +3,6 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-# from .torch_utils import *
-# from .local_utils import Indexflow, split_img, imshow
 from collections import deque, OrderedDict
 import functools
 
@@ -21,43 +19,6 @@ def weights_init(m):
         # Estimated mean, must be around 0
         m.bias.data.fill_(0)
 
-def getNormLayer(norm='bn', dim=2):
-
-    norm_layer = None
-    if dim == 2:
-        if norm == 'bn':
-            norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
-        elif norm == 'instance':
-            norm_layer = functools.partial(nn.InstanceNorm2d, affine=False)
-        elif norm == 'ln':
-            norm_layer = functools.partial(LayerNorm2d)
-    elif dim == 1:
-        if norm == 'bn':
-            norm_layer = functools.partial(nn.BatchNorm1d, affine=True)
-        elif norm == 'instance':
-            norm_layer = functools.partial(nn.InstanceNorm1d, affine=False)
-        elif norm == 'ln':
-            norm_layer = functools.partial(LayerNorm1d)
-    assert(norm_layer != None)
-    return norm_layer
-
-def to_variable(x, requires_grad=True,  var=True,volatile=False):
-    
-    if type(x) is Variable:
-        return x
-    if type(x) is np.ndarray:
-        x = torch.from_numpy(x.astype(np.float32))
-    if var:
-        x = Variable(x, requires_grad=requires_grad, volatile=volatile)
-    x.volatile = volatile 
-    
-    return x
-
-def to_device(src, ref, var = True, volatile = False, requires_grad=True):
-    requires_grad = requires_grad and (not volatile)
-    src = to_variable(src, var=var, volatile=volatile,requires_grad=requires_grad)
-    return src.cuda(ref.get_device()) if ref.is_cuda else src
-
 def branch_out(in_dim, out_dim=3):
     _layers = [ nn.ReflectionPad2d(1),
                 nn.Conv2d(in_dim, out_dim, 
@@ -69,13 +30,22 @@ def branch_out(in_dim, out_dim=3):
 def KL_loss(mu, log_sigma):
     loss = -log_sigma + .5 * (-1 + torch.exp(2. * log_sigma) + mu**2)
     loss = torch.mean(loss)
-    # kld = mu.pow(2).add_(log_sigma.exp()).mul_(-1).add_(1).add_(log_sigma)
-    # loss = torch.mean(kld).mul_(-0.5)
-
     return loss
 
 def sample_encoded_context(mean, logsigma, kl_loss=False, epsilon=None):
-    
+    """ 
+    Sampling a vector from Norm(mean, sigma)
+    Parameters:
+    ----------
+    mean: int
+        mean vector.
+    logsigma : int
+        logsigma vector.
+    kl_loss: bool
+        whether to return kl_loss or not
+    epsilon:
+        a noise vector sampled from N(0, 1)
+    """
     # epsilon = tf.random_normal(tf.shape(mean))
     if epsilon is None:
         epsilon = to_device( torch.randn(mean.size()), mean, requires_grad=False) 
@@ -87,6 +57,17 @@ def sample_encoded_context(mean, logsigma, kl_loss=False, epsilon=None):
 
 class condEmbedding(nn.Module):
     def __init__(self, noise_dim, emb_dim, use_cond=True):
+        """
+        Parameters:
+        ----------
+        noise_dim: int
+            channel of noise vector.
+        emb_dim : int
+            the dimension of compressed sentence embedding.
+        use_cond:  list
+            wheter to inject noise into embedding vector.
+        """
+
         super(condEmbedding, self).__init__()
         self.register_buffer('device_id', torch.zeros(1))
         self.noise_dim = noise_dim
@@ -96,6 +77,7 @@ class condEmbedding(nn.Module):
             self.linear  = nn.Linear(noise_dim, emb_dim*2)
         else:
             self.linear  = nn.Linear(noise_dim, emb_dim)
+
     def forward(self, inputs, kl_loss=True, epsilon=None):
         '''
         inputs: (B, dim)
