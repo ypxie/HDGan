@@ -1,34 +1,46 @@
 # -*- coding: utf-8 -*-
 
+
+import os
+import sys, os
+
+sys.path.insert(0, os.path.join('..','..'))
+
+home = os.path.expanduser('~')
+proj_root = os.path.join('..','..')
+save_root  =  os.path.join(proj_root, 'Data', 'Results')
+
 import numpy as np
 import argparse, os
 import torch, h5py
-
 import torch.nn as nn
 from collections import OrderedDict
-from .proj_utils.local_utils import mkdirs
-from .testGan import test_gans
-from .fuel.datasets import TextDataset
+
+from HDGan.proj_utils.local_utils import mkdirs
+from HDGan.testGan import test_gans
+from HDGan.fuel.datasets import TextDataset
 from HDGan.models.hd_networks import Generator
 
-def test_worker(data_root, model_root, save_root, testing_dict):
+if  __name__ == '__main__':
+    
     print('testing_dict: ', testing_dict)
     
     parser = argparse.ArgumentParser(description = 'Gans')    
 
-    parser.add_argument('--batch_size', type=int, default=testing_dict['batch_size'], metavar='N',
+    parser.add_argument('--batch_size', type=int, default=4, metavar='N',
                         help='batch size.')
-    parser.add_argument('--device_id', type=int, default= testing_dict['device_id'], 
+    parser.add_argument('--device_id', type=int, default= 0, 
                         help='which device')
-    parser.add_argument('--load_from_epoch', type=int, default= testing_dict['load_from_epoch'], 
+    parser.add_argument('--load_from_epoch', type=int, default= 0, 
                         help='load from epoch')
-    parser.add_argument('--model_name', type=str, default = testing_dict['model_name'])
-
-    parser.add_argument('--test_sample_num', type=int, default= testing_dict['test_sample_num'], 
+    parser.add_argument('--model_name', type=str, default = None)
+    parser.add_argument('--dataset',    type=str,      default= None, 
+                        help='which dataset to use [birds or flowers]') 
+    
+    parser.add_argument('--test_sample_num', type=int, default=  None, 
                         help='The number of runs for each embeddings when testing')
                  
-    parser.add_argument('--save_spec', type=str, default=testing_dict['save_spec'], help='save_spec')
-    
+    parser.add_argument('--save_spec', type=str, default= None, help='save_spec')
     
     args = parser.parse_args()
     
@@ -36,8 +48,7 @@ def test_worker(data_root, model_root, save_root, testing_dict):
 
     netG = Generator(sent_dim=1024, noise_dim= 100, emb_dim=128, hid_dim=128, num_resblock=2)      
     
-    data_name  = testing_dict['dataset']
-    datadir    = os.path.join(data_root, data_name)
+    datadir    = os.path.join(data_root, args.dataset)
 
     device_id = getattr(args, 'device_id', 0)
     
@@ -53,7 +64,7 @@ def test_worker(data_root, model_root, save_root, testing_dict):
 
     model_name = args.model_name  
     
-    save_folder  = os.path.join(save_root, data_name, args.save_spec + 'testing_num_{}'.format(args.test_sample_num) )
+    save_folder  = os.path.join(save_root, args.dataset, args.save_spec + 'testing_num_{}'.format(args.test_sample_num) )
     mkdirs(save_folder)
     
     test_gans(dataset, model_root, model_name, save_folder, netG, args)

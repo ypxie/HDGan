@@ -19,11 +19,11 @@ from HDGan.neuralDist.neuralDistModel  import ImgSenRanking
 from HDGan.neuralDist.neuralDistModel  import ImageEncoder
 from HDGan.fuel.datasets import TextDataset
 
-def train_worker(data_root, model_root, training_dict):
-
-    dim_image   =  training_dict.get('dim_image', 1536) 
-    sent_dim    =  training_dict.get('sent_dim', 1024) 
-    hid_dim     =  training_dict.get('hid_dim', 512) 
+    
+if  __name__ == '__main__':
+    dim_image   =  1536
+    sent_dim    =  1024
+    hid_dim     =  512
     
     parser = argparse.ArgumentParser(description = 'NeuralDist')    
     parser.add_argument('--weight_decay', type=float, default= 0,
@@ -32,10 +32,9 @@ def train_worker(data_root, model_root, training_dict):
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default = .0002, metavar='LR',
                         help='learning rate (default: 0.01)')
-  
+    
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.5)')
-    
     
     parser.add_argument('--save_freq', type=int, default= 5, metavar='N',
                         help='how frequent to save the model')
@@ -52,16 +51,17 @@ def train_worker(data_root, model_root, training_dict):
     parser.add_argument('--device_id', type=int, default=0, 
                         help='which device')
     
-    parser.add_argument('--reuse_weights',  default= False,
+    parser.add_argument('--reuse_weights',    action='store_true',  default= False, 
                         help='continue from last checkout point')
-                        
     parser.add_argument('--load_from_epoch', type=int, default= 0, 
                         help='load from epoch')
-    parser.add_argument('--model_name', type=str, default= 'neural_dist')
-
-    parser.add_argument('--dataset', type=str, default=None, help='which dataset to use [birds or flowers]') 
-
-    parser.add_argument('--margin',  default = 0.2, help='which devices to parallel the data')
+    parser.add_argument('--model_name', type=str, 
+                        default= 'neural_dist')
+    
+    parser.add_argument('--dataset', type=str, default=None, 
+                        help='which dataset to use [birds or flowers]') 
+    parser.add_argument('--margin',  default = 0.2, 
+                        help='which devices to parallel the data')
 
     args = parser.parse_args()
 

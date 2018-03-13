@@ -60,7 +60,6 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
     h5_folder, h5_name = os.path.split(h5_path)
     h5_name_noext = os.path.splitext(h5_name)[0]
     result_path  = os.path.join(h5_folder, h5_name_noext+"_epoch_{}_neu_dist.json".format(args.load_from_epoch))
-    ranking_path = os.path.join(h5_folder, h5_name_noext+"_epoch_{}_nd_ranking.json".format(args.load_from_epoch))
     print("{} exists or not: ".format(h5_path), os.path.exists(h5_path))
     with h5py.File(h5_path,'r') as h5_data:
         pool = Pool(3)
@@ -87,15 +86,10 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
 
         ''' load model '''
         weightspath = os.path.join(model_folder, 'W_epoch{}.pth'.format(args.load_from_epoch))
-        
-        if os.path.exists(weightspath) :
-            weights_dict = torch.load(weightspath, map_location=lambda storage, loc: storage)
-            print('reload weights from {}'.format(weightspath))
-            vs_model.load_state_dict(weights_dict)# 12)
-            start_epoch = args.load_from_epoch + 1
-        else:
-            print ('{} do not exist!!'.format(weightspath))
-            raise NotImplementedError
+        weights_dict = torch.load(weightspath, map_location=lambda storage, loc: storage)
+        print('reload weights from {}'.format(weightspath))
+        vs_model.load_state_dict(weights_dict)# 12)
+        start_epoch = args.load_from_epoch + 1
 
         vs_model.eval()
         img_encoder.eval()
@@ -132,13 +126,8 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
             cost_std  = float(np.std(all_cost))
 
             all_results[this_key] = {"mean":cost_mean, "std":cost_std}
-        
-        rank_idx = np.argsort(-all_cost) #from large to low
-        
-        sorted_name = [name_list[idx] for idx in rank_idx]
 
         print(all_results)    
         with open(result_path, 'w') as f:
             json.dump(all_results, f)
-        with open(ranking_path, 'w') as f:
-            json.dump(sorted_name, f)
+        

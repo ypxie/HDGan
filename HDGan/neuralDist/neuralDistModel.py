@@ -25,7 +25,6 @@ def xavier_weight(tensor):
     return tensor.normal_(0, r)
 
 
-
 class ImageEncoder(nn.Module):
     def __init__(self):
         super(ImageEncoder, self).__init__()

@@ -1,40 +1,48 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import argparse, os
-import torch, h5py
+import os
+import sys, os
 
+sys.path.insert(0, os.path.join('..','..'))
+
+home = os.path.expanduser('~')
+proj_root = os.path.join('..','..')
+
+data_root  = os.path.join(proj_root, 'Data', 'Results')
+model_root = os.path.join(proj_root, 'Models')
+
+import argparse
+import torch, h5py
+import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
-from ..proj_utils.local_utils import mkdirs
-from .testNeuralDist  import test_nd
-from .neuralDistModel  import ImgSenRanking
-from .neuralDistModel  import ImageEncoder
+from HDGan.proj_utils.local_utils import mkdirs
+from HDGan.neuralDist.testNeuralDist  import test_nd
+from HDGan.neuralDist.neuralDistModel  import ImgSenRanking
+from HDGan.neuralDist.neuralDistModel  import ImageEncoder
 
-def test_worker(data_root, model_root, testing_dict):
-    print('testing_dict: ', testing_dict)
 
-    batch_size   =  testing_dict.get('batch_size')
-    device_id    =  testing_dict.get('device_id')
+if  __name__ == '__main__':
     
-    dim_image    =  testing_dict.get('dim_image', 1536) 
-    sent_dim     =  testing_dict.get('sent_dim',  1024) 
-    hid_dim      =  testing_dict.get('hid_dim',    512) 
-        
-    data_root           = testing_dict.get('data_root', data_root)
-    model_root          = testing_dict.get('model_root', model_root)    
-    
+    dim_image    =  1536
+    sent_dim     =  1024
+    hid_dim      =  512
+
     parser = argparse.ArgumentParser(description = 'test nd') 
-    parser.add_argument('--batch_size', type=int, default=batch_size, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=16, metavar='N',
                         help='batch size.')
     
-    parser.add_argument('--device_id', type=int, default= device_id, 
+    parser.add_argument('--device_id', type=int, default= 0, 
                         help='which device')
-    
-    parser.add_argument('--load_from_epoch', type=int, default= testing_dict['load_from_epoch'], 
+    parser.add_argument('--dataset',    type=str,      default= None, 
+                        help='which dataset to use [birds or flowers]') 
+                        
+    parser.add_argument('--load_from_epoch', type=int, default= 0, 
                         help='load from epoch')
-    parser.add_argument('--model_name', type=str, default = testing_dict['model_name'])
-    
+    parser.add_argument('--model_name', type=str, default = None)
+    parser.add_argument('--testing_path', type=str, default = None,
+                        help='the h5 file that is used for evaluation')
+
     args = parser.parse_args()
 
     args.cuda = torch.cuda.is_available()
