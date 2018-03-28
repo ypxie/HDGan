@@ -65,15 +65,7 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
         pool = Pool(3)
         all_embeddings = h5_data["embedding"]
         images = h5_data["output_256"]
-        class_IDs = h5_data["classIDs"]
-        try:
-            saveIDs = h5_data["saveIDs"]
-        except:
-            print('you dont have saveIDs. now we use fake ones')
-            saveIDs = class_IDs
-
-        name_list = ["{}_{}".format(this_cls, this_save) for (this_cls, this_save) in zip(class_IDs, saveIDs)]
-
+        
         all_keys = []
         for this_key in h5_data.keys():
             if "output" in this_key:

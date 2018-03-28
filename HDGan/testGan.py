@@ -12,9 +12,8 @@ from torch.nn import Parameter
 from torch.nn.utils import clip_grad_norm
 from .proj_utils.plot_utils import *
 from .proj_utils.local_utils import *
-
+#from .HDGan import load_partial_state_dict
 from .proj_utils.torch_utils import *
-from .HDGan import load_partial_state_dict
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -41,6 +40,7 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     G_weightspath = os.path.join(model_folder, 'G_epoch{}.pth'.format(args.load_from_epoch))
     print('reload weights from {}'.format(G_weightspath))
     weights_dict = torch.load(G_weightspath, map_location=lambda storage, loc: storage)
+    #load_partial_state_dict(netG, weights_dict)
     netG.load_state_dict(weights_dict)
 
     testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)

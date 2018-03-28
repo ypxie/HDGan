@@ -16,12 +16,12 @@ Anaconda 3.6
 Download our preprocessed data from [birds](https://www.dropbox.com/sh/v0vcgwue2nkwgrf/AACxoRYTAAacmPVfEvY-eDzia?dl=0), and [flowers](https://www.dropbox.com/sh/g8rmz41xblaszb1/AABPNtIcLu1fKNoBsJTHJTIKa?dl=0), save them to Data/birds and Data/flowers, respectively.
 
 ## Training
-- For bird:   goto train/train_gan:    `python train_bird.py`
-- For flower: goto train/train_gan:  `python train_flower.py`
+- For bird:   goto train/train_gan:  `bash train_birds.sh`
+- For flower: goto train/train_gan:  `bash train_flower.sh`
 
 ## Testing
-- To generate images, goto test/test_gan:   `python test_both`
-- To evaluate the VS-smilarity, goto test/test_neudist: `python test_neudist.py`
+- To generate images, goto test/test_gan:   `bash test_birds.sh` for birds, and  `bash test_flowers.sh` for flower. 
+- To evaluate the VS-smilarity, goto test/test_neudist: `bash test_nd_birds.sh` for birds and  `bash test_nd_flowers.sh` for flower.
 
 ## Pretrained Model
 - Download the [pretrained models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0).

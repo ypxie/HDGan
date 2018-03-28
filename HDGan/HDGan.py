@@ -44,8 +44,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     
     
     ''' configure optimizer '''
-    optimizerD = optim.Adam(netD.parameters(), lr= d_lr, betas=(0.5, 0.999), weight_decay=args.weight_decay)
-    optimizerG = optim.Adam(netG.parameters(), lr= g_lr, betas=(0.5, 0.999), weight_decay=args.weight_decay)
+    optimizerD = optim.Adam(netD.parameters(), lr= d_lr, betas=(0.5, 0.999) )
+    optimizerG = optim.Adam(netG.parameters(), lr= g_lr, betas=(0.5, 0.999) )
 
     model_folder = os.path.join(model_root, model_name)
     if not os.path.exists(model_folder):
@@ -59,10 +59,11 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
         if os.path.exists(D_weightspath) and os.path.exists(G_weightspath):
             weights_dict = torch.load(D_weightspath, map_location=lambda storage, loc: storage)
             print('reload weights from {}'.format(D_weightspath))
-            netD.load_state_dict(weights_dict)
+            load_partial_state_dict(netD, weights_dict)
+
             print('reload weights from {}'.format(G_weightspath))
             weights_dict = torch.load(G_weightspath, map_location=lambda storage, loc: storage)
-            netG.load_state_dict(weights_dict)
+            load_partial_state_dict(netG, weights_dict)
 
             start_epoch = args.load_from_epoch + 1
             
@@ -188,10 +189,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             # --- visualize train samples----
             if it % args.verbose_per_iter == 0:
                 for k, sample in fake_images.items():
-                    plot_imgs([images[k], sample.cpu().data.numpy()], epoch, k, 'train_images')
+                    plot_imgs([images[k], sample.cpu().data.numpy()], epoch, k, 'train_images', model_name=model_name)
                 print ('[epoch %d/%d iter %d]: lr = %.6f g_loss = %.5f d_loss= %.5f' % (epoch, tot_epoch, it, g_lr, g_loss_val, d_loss_val))
                 sys.stdout.flush()
-
+                
         # generate and visualize testing results per epoch
         vis_samples = {}
         # display original image and the sampled images 
@@ -230,7 +231,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
         end_timer = time.time() - start_timer
         # visualize testing samples
         for typ, v in vis_samples.items():
-            plot_imgs(v, epoch, typ, 'test_samples', path=model_folder)
+            plot_imgs(v, epoch, typ, 'test_samples', path=model_folder, model_name=model_name)
 
         ''' save weights '''
         if epoch % args.save_freq == 0:
@@ -268,6 +269,28 @@ def compute_g_loss(fake_logit):
     generator_loss = torch.mean( ((fake_logit) -1)**2 )
     return generator_loss
 
-def plot_imgs(samples, epoch, typ, name, path=''):
+def plot_imgs(samples, epoch, typ, name, path='', model_name=None):
     tmpX = save_images(samples, save=not path == '', save_path=os.path.join(path, '{}_epoch{}_{}.png'.format(name, epoch, typ)), dim_ordering='th')
     plot_img(X=tmpX, win='{}_{}.png'.format(name, typ), env=model_name)
+
+
+
+def load_partial_state_dict(model, state_dict):
+    
+    own_state = model.state_dict()
+    for name, param in state_dict.items():
+        if name not in own_state:
+            raise KeyError('unexpected key "{}" in state_dict'
+                            .format(name))
+        if isinstance(param, Parameter):
+            # backwards compatibility for serialized parameters
+            param = param.data
+        try:
+            own_state[name].copy_(param)
+        except:
+            print('While copying the parameter named {}, whose dimensions in the model are'
+                    ' {} and whose dimensions in the checkpoint are {}, ...'.format(
+                        name, own_state[name].size(), param.size()))
+            raise
+    print ('>> load partial state dict: {} initialized'.format(len(state_dict)))
+

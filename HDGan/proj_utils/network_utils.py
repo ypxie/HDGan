@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from collections import deque, OrderedDict
 import functools
-
+from .torch_utils import *
 
 ## Weights init function, DCGAN use 0.02 std
 def weights_init(m):

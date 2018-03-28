@@ -6,7 +6,6 @@ from torch.autograd import Variable
 import torch.nn as nn
 from .pretrainedmodels import inceptionresnetv2 
 
-
 def l2norm(input, p=2.0, dim=1, eps=1e-12):
     """
     Compute L2 norm, row-wise

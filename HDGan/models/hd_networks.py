@@ -131,7 +131,7 @@ class Discriminator(torch.nn.Module):
 
         
         self.img_encoder_64   = ImageDown(64,  num_chan,  enc_dim)  # 4x4
-        self.pair_disc_64     = DiscClassifier(enc_dim, emb_dim, feat_size=4)
+        self.pair_disc_64     = DiscClassifier(enc_dim, emb_dim, kernel_size=4)
         
         
         if 1:  # discriminator for 64 input    
@@ -142,7 +142,7 @@ class Discriminator(torch.nn.Module):
         
         if 1: #discriminator for 128 input
             self.img_encoder_128  = ImageDown(128,  num_chan, enc_dim) # 4x4
-            self.pair_disc_128  = DiscClassifier(enc_dim, emb_dim, feat_size=4)        
+            self.pair_disc_128  = DiscClassifier(enc_dim, emb_dim, kernel_size=4)        
             self.local_img_disc_128 = nn.Conv2d(enc_dim, 1, kernel_size=1, padding=0, bias=True)
             # map sentence to a code of length emb_dim
             _layers = [nn.Linear(sent_dim, emb_dim)]
@@ -151,7 +151,7 @@ class Discriminator(torch.nn.Module):
             
         if 1: #discriminator for 256 input
             self.img_encoder_256  = ImageDown(256, num_chan, enc_dim)     # 8x8
-            self.pair_disc_256   = DiscClassifier(enc_dim, emb_dim, feat_size=4)
+            self.pair_disc_256   = DiscClassifier(enc_dim, emb_dim, kernel_size=4)
             
             # shrink is used for mapping 8x8 Feature maps to 4x4
             self.shrink = conv_norm(enc_dim, enc_dim,  norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)    

@@ -26,15 +26,11 @@ if  __name__ == '__main__':
     hid_dim     =  512
     
     parser = argparse.ArgumentParser(description = 'NeuralDist')    
-    parser.add_argument('--weight_decay', type=float, default= 0,
-                        help='weight decay for training')
+
     parser.add_argument('--maxepoch', type=int, default=600, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default = .0002, metavar='LR',
                         help='learning rate (default: 0.01)')
-    
-    parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
-                        help='SGD momentum (default: 0.5)')
     
     parser.add_argument('--save_freq', type=int, default= 5, metavar='N',
                         help='how frequent to save the model')
@@ -47,7 +43,7 @@ if  __name__ == '__main__':
                         help='batch size.')
     parser.add_argument('--num_emb', type=int, default=1, metavar='N',
                         help='number of emb chosen for each image.')
-    ## add more
+
     parser.add_argument('--device_id', type=int, default=0, 
                         help='which device')
     
@@ -55,13 +51,12 @@ if  __name__ == '__main__':
                         help='continue from last checkout point')
     parser.add_argument('--load_from_epoch', type=int, default= 0, 
                         help='load from epoch')
-    parser.add_argument('--model_name', type=str, 
-                        default= 'neural_dist')
+    parser.add_argument('--model_name', type=str, default= 'neural_dist')
     
     parser.add_argument('--dataset', type=str, default=None, 
                         help='which dataset to use [birds or flowers]') 
     parser.add_argument('--margin',  default = 0.2, 
-                        help='which devices to parallel the data')
+                        help='margin used in triplet loss')
 
     args = parser.parse_args()
 
@@ -88,8 +83,7 @@ if  __name__ == '__main__':
     dataset.test = dataset.get_data(filename_test)
     filename_train = os.path.join(datadir, 'train')
     dataset.train = dataset.get_data(filename_train)
-  
-    #model_name ='{}_{}_{}'.format(args.model_name, data_name, args.imsize)
+    
     model_name ='{}_{}'.format(args.model_name, data_name)
     print ('>> START training ')
     train_nd(dataset, model_root, model_name, img_encoder, vs_model, args)

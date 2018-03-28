@@ -47,7 +47,11 @@ if  __name__ == '__main__':
     parser.add_argument('--verbose_per_iter', type=int, default= 50, 
                         help='print losses per iteration')
     parser.add_argument('--num_emb', type=int, default=4, metavar='N',
-                        help='number of emb chosen for each image.')
+                        help='number of emb chosen for each image during training.')
+    
+    parser.add_argument('--noise_dim', type=int, default= 100, metavar='N',
+                        help='the dimension of noise.')
+
     parser.add_argument('--ncritic', type=int, default= 1, metavar='N',
                         help='the channel of each image.')
     parser.add_argument('--test_sample_num', type=int, default=4, 
@@ -62,11 +66,11 @@ if  __name__ == '__main__':
     datadir = os.path.join(data_root, data_name)
 
     # Generator
-    netG = Generator(sent_dim=1024, noise_dim=100, emb_dim=128, hid_dim=128, num_resblock = 2)
+    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock = 1)
     
     # Discriminator
     netD = Discriminator(num_chan = 3, hid_dim = 128, sent_dim=1024, emb_dim=128)
-  
+    
     print(args)
 
     device_id = getattr(args, 'device_id', 0)
@@ -84,7 +88,7 @@ if  __name__ == '__main__':
     filename_train = os.path.join(datadir, 'train')
     dataset.train = dataset.get_data(filename_train)
     
-    model_name ='{}_{}_{}'.format(args.model_name, data_name, args.imsize)
+    model_name ='{}_{}_256'.format(args.model_name, data_name)
     print ('>> START training ')
     train_gans(dataset, model_root, model_name, netG, netD, args)
     

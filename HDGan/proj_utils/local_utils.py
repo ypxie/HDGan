@@ -93,3 +93,22 @@ def imshow(img, size=None):
     plt.imshow(img)
     plt.show()
 
+def Indexflow(Totalnum, batch_size, random=True):
+    numberofchunk = int(Totalnum + batch_size - 1)// int(batch_size)   # the floor
+    #Chunkfile = np.zeros((batch_size, row*col*channel))
+    totalIndx = np.arange(Totalnum).astype(np.int)
+    if random is True:
+        totalIndx = np.random.permutation(totalIndx)
+        
+    chunkstart = 0
+    for chunkidx in range(int(numberofchunk)):
+        thisnum = min(batch_size, Totalnum - chunkidx*batch_size)
+        thisInd = totalIndx[chunkstart: chunkstart + thisnum]
+        chunkstart += thisnum
+        yield thisInd
+
+def IndexH5(h5_array, indices):
+    read_list = []
+    for idx in indices:
+        read_list.append(h5_array[idx])
+    return np.stack(read_list, 0)

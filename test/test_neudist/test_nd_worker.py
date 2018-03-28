@@ -61,9 +61,7 @@ if  __name__ == '__main__':
             
     model_name = args.model_name   #'{}_{}_{}'.format(args.model_name, data_name, args.imsize)
     
-    testing_path = os.path.join(testing_dict['data_folder'],  testing_dict['file_name'])
-
-    test_nd(testing_path, model_root, model_name, img_encoder, vs_model, args)
+    test_nd(args.testing_path, model_root, model_name, img_encoder, vs_model, args)
 
     
     
