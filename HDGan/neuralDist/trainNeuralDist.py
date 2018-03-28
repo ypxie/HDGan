@@ -40,7 +40,7 @@ def train_nd(dataset, model_root, mode_name, img_encoder, vs_model, args):
     updates_per_epoch = int(number_example / args.batch_size)
         
     ''' configure optimizer '''
-    optimizer = optim.Adam(vs_model.parameters(), lr= args.lr, betas=(0.5, 0.999), weight_decay=args.weight_decay)
+    optimizer = optim.Adam(vs_model.parameters(), lr= args.lr, betas=(0.5, 0.999) )
     model_folder = os.path.join(model_root, mode_name)
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)

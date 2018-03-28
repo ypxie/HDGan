@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-import argparse, os
+import argparse, os, sys
 import torch, h5py
 sys.path.insert(0, os.path.join('..','..'))
 
@@ -38,7 +38,9 @@ if  __name__ == '__main__':
                         help='plot the results every {} batches')
     parser.add_argument('--verbose_per_iter', type=int, default= 50, 
                         help='print losses per iteration')
-    
+    parser.add_argument('--epoch_decay', type=float, default=100, 
+                        help='decay learning rate by half every epoch_decay')
+                        
     parser.add_argument('--batch_size', type=int, default=64, metavar='N',
                         help='batch size.')
     parser.add_argument('--num_emb', type=int, default=1, metavar='N',
