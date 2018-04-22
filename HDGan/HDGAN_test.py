@@ -12,7 +12,6 @@ from torch.nn import Parameter
 from torch.nn.utils import clip_grad_norm
 from .proj_utils.plot_utils import *
 from .proj_utils.local_utils import *
-#from .HDGan import load_partial_state_dict
 from .proj_utils.torch_utils import *
 
 from PIL import Image, ImageDraw, ImageFont
@@ -25,7 +24,8 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     # helper function
     netG.eval()
 
-    test_sampler  = dataset.test.next_batch_test
+    test_sampler = dataset.next_batch_test
+    highest_res = dataset.imsize
     
     model_folder = os.path.join(model_root, mode_name)
     model_marker = mode_name + '_G_epoch_{}'.format(args.load_from_epoch)
@@ -46,9 +46,7 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
     testing_z = to_device(testing_z, netG.device_id, volatile=True)
 
-    num_examples = dataset.test._num_examples
-    dataset.test._num_examples = num_examples
-    
+    num_examples = dataset._num_examples
     total_number = num_examples * args.test_sample_num
 
     all_choosen_caption = []
@@ -56,7 +54,7 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
 
     if org_file_not_exists:
         org_h5 = h5py.File(org_h5path,'w')
-        org_dset     = org_h5.create_dataset('output_256', shape=(num_examples,256, 256,3), dtype=np.uint8)
+        org_dset     = org_h5.create_dataset('output_{}'.format(highest_res), shape=(num_examples, highest_res, highest_res, 3), dtype=np.uint8)
         org_emb_dset = org_h5.create_dataset('embedding', shape=(num_examples, 1024), dtype=np.float)
     else:
         org_dset = None
@@ -76,10 +74,9 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
         while True:
             if start_count >= num_examples:
                 break
-            test_images, test_embeddings_list, saveIDs, classIDs, test_captions = test_sampler(args.batch_size, start_count, 1)
+            test_images, test_embeddings_list, saveIDs, classIDs, test_captions = test_sampler()
             
             this_batch_size =  test_images.shape[0]
-            #print('start: {}, this_batch size {}, num_examples {}'.format(start_count, test_images.shape[0], dataset.test._num_examples  ))
             chosen_captions = []
             for this_caption_list in test_captions:
                 chosen_captions.append(this_caption_list[0])
@@ -111,8 +108,7 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
                         for k in test_outputs.keys():
                             vis_samples[k] = [None for i in range(args.test_sample_num + 1)] # +1 to fill real image
                             img_shape = test_outputs[k].size()[2::]
-                            
-                            print('total number of images is: ', total_number)
+    
                             dset[k] = h5file.create_dataset(k, shape=(total_number,)+ img_shape + (3,), dtype=np.uint8)
                             data_count[k] = 0
                     init_flag = False    
@@ -142,10 +138,11 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
                     #print(start, start+bs, dset['embedding'].shape, this_test_embeddings_np.shape)
                     dset['embedding'][start: start + bs] = this_test_embeddings_np #np.tile(this_test_embeddings_np, (bs,1))
                     data_count[typ] = start + bs
-                    
-            save_super_images(vis_samples, chosen_captions, this_batch_size, save_folder, saveIDs, classIDs)
+            
+            if args.save_visual_results:
+                save_super_images(vis_samples, chosen_captions, this_batch_size, save_folder, saveIDs, classIDs)
 
-            print('saved files: ', data_count)  
+            print('saved files [sample {}/{}]: '.format(start_count, num_examples), data_count)  
             
         caption_array = np.array(all_choosen_caption, dtype=object)
         string_dt = h5py.special_dtype(vlen=str)
@@ -179,7 +176,7 @@ def drawCaption(img, caption, level=['output 64', 'output 128', 'output 256']):
 
     return img_txt
 
-def save_super_images(vis_samples, captions_batch, batch_size, save_folder, saveIDs, classIDs, max_sample_num=8):
+def save_super_images(vis_samples, captions_batch, batch_size, save_folder, saveIDs, classIDs, max_sample_num=8, save_single_img=True):
     save_folder_caption = os.path.join(save_folder, 'with_captions')
     save_folder_images  = os.path.join(save_folder, 'images')
     
@@ -215,9 +212,10 @@ def save_super_images(vis_samples, captions_batch, batch_size, save_folder, save
         batch_size  = img_tensor.shape[0]
         #imshow(img_tensor[0,0])
         batch_all = []
-        for bidx in range(batch_size):  
-            this_folder_id = os.path.join(save_folder_images, '{}_{}'.format(valid_classIDS[bidx], valid_IDS[bidx]))
-            mkdirs([this_folder_id])
+        for bidx in range(batch_size):
+            if save_single_img:
+                this_folder_id = os.path.join(save_folder_images, '{}_{}'.format(valid_classIDS[bidx], valid_IDS[bidx]))
+                mkdirs([this_folder_id])
 
             if not re.search('[a-zA-Z]+', captions_batch[j]):
                 continue
@@ -232,7 +230,10 @@ def save_super_images(vis_samples, captions_batch, batch_size, save_folder, save
                     this_row.append(re_sample)  
                 #img_rgb = ( (re_sample + 1.0) * 127.5 ).astype(np.uint8)
                 #print("img_rgb shape: ", img_rgb.shape)
-                scipy.misc.imsave(os.path.join(this_folder_id, '{}_copy_{}.jpg'.format(typ, tidx)),  re_sample)
+
+                ## TODO to save space, do we not save single image here. You can do that if you want
+                if save_single_img:
+                    scipy.misc.imsave(os.path.join(this_folder_id, '{}_copy_{}.jpg'.format(typ, tidx)),  re_sample)
                 
             this_row = np.concatenate(this_row, axis=1) # row, col*T, 3
             batch_all.append(this_row)

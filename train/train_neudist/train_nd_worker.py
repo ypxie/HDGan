@@ -79,7 +79,6 @@ if  __name__ == '__main__':
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
     
-    print ('>> initialize dataset')
     dataset = TextDataset(datadir, 'cnn-rnn', 4)
     filename_test = os.path.join(datadir, 'test')
     dataset.test = dataset.get_data(filename_test)

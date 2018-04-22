@@ -2,71 +2,86 @@ import numpy as np
 import pickle
 import random
 from collections import OrderedDict
-import sys
+import sys, os
 import scipy.misc as misc
-from ..proj_utils.local_utils import imresize_shape
 
 #-------------------------------------------------------------------------#
 # dataloader for birds and flowers is modified from https://github.com/hanzhanggit/StackGAN
-# don't batch size 1
+# don't set batch size 1
 #-------------------------------------------------------------------------#
-
 
 def resize_images(tensor, shape):
     out = []
     for k in range(tensor.shape[0]):
         tmp = misc.imresize(tensor[k], shape)
         out.append(tmp[np.newaxis,:,:,:])
-    return np.concatenate(out, axis=0).transpose((0,3,1,2))
-
+    return np.concatenate(out, axis=0)
 
 class Dataset(object):
-    def __init__(self, images, imsize, embeddings=None,
-                 filenames=None, workdir=None,
-                 labels=None, aug_flag=True,
-                 class_id=None, class_range=None, side_list=[64, 128]):
-        self._images = images
-        self._embeddings = embeddings
-        self._filenames = filenames
+    def __init__(self, workdir, img_size, batch_size, n_embed, mode='train'):
+        
+       
+        if img_size in [256, 512]:
+            self.image_filename = '/304images.pickle'
+            self.output_res = [64, 128, 256]
+            if img_size == 512: self.output_res += [512]
+        elif img_size in [64]:
+            self.image_filename = '/76images.pickle'
+            self.output_res = [64]
+        self.embedding_filename = '/char-CNN-RNN-embeddings.pickle'
+        self.image_shape = [img_size, img_size, 3]
+        # self.image_dim = self.image_shape[0] * self.image_shape[1] * 3
+        # self.embedding_shape = None
+        # self.train = None
+        # self.test = None
+        self.batch_size = batch_size
+        self.n_embed = n_embed
+
+        self.imsize = img_size
         self.workdir = workdir
-        self._labels = labels
+        self.train_mode = mode == 'train'
+        self.get_data(os.path.join(self.workdir, mode))
+
+        # set up sampler
+        self._index_in_epoch = 0
+        self._text_index = 0
+        self._perm = np.arange(self._num_examples)
+        np.random.shuffle(self._perm)
         self._epochs_completed = -1
-        self._num_examples = len(images)
-        self._saveIDs = self.saveIDs()
+        self.saveIDs = np.arange(self._num_examples)
 
-        # shuffle on first run
-        self._index_in_epoch = self._num_examples
-        self._aug_flag = aug_flag
-        self._class_id = np.array(class_id)
-        self._class_range = class_range
-        self._imsize = imsize
-        self._perm = None
-        self.end_of_data = False
-    @property
-    def images(self):
-        return self._images
+        print('-> init data loader ', mode)
+        print('\t {} samples'.format(self._num_examples))
+        print('\t {} output resolutions'.format(self.output_res))
+        
+    def get_data(self, pickle_path):
+        with open(pickle_path + self.image_filename, 'rb') as f:
+            images = pickle.load(f)
+            self.images = np.array(images)
 
-    @property
-    def embeddings(self):
-        return self._embeddings
+        with open(pickle_path + self.embedding_filename, 'rb') as f:
+            if sys.version_info.major > 2:
+                embeddings = pickle.load(f,  encoding="bytes")
+            else:
+                embeddings = pickle.load(f)
 
-    @property
-    def filenames(self):
-        return self._filenames
+            self.embeddings = np.array(embeddings)
+            self.embedding_shape = [self.embeddings.shape[-1]]
+            # print('embeddings: ', self.embeddings.shape)
 
-    @property
-    def num_examples(self):
-        return self._num_examples
+        with open(pickle_path + '/filenames.pickle', 'rb') as f:
+            self.filenames = pickle.load(f)
+            # print('list_filenames: ', len(self.filenames))
 
-    @property
-    def epochs_completed(self):
-        return self._epochs_completed
+        with open(pickle_path + '/class_info.pickle', 'rb') as f:
+            if sys.version_info.major > 2:
+                class_id = pickle.load(f, encoding="bytes")
+            else:
+                class_id = pickle.load(f)
+            self.class_id = np.array(class_id)
 
-    def saveIDs(self):
-        self._saveIDs = np.arange(self._num_examples)
-        #np.random.shuffle(self._saveIDs) why do we need to shuffle????
-        return self._saveIDs
-
+        self._num_examples = len(self.images)
+        
     def readCaptions(self, filenames, class_id):
         name = filenames
         if name.find('jpg/') != -1:  # flowers dataset
@@ -81,26 +96,28 @@ class Dataset(object):
 
     def transform(self, images):
         
-        if self._aug_flag:
-            transformed_images =\
-                np.zeros([images.shape[0], self._imsize, self._imsize, 3])
-            ori_size = images.shape[1]
-            for i in range(images.shape[0]):
-                h1 = int( np.floor((ori_size - self._imsize) * np.random.random()) )
-                w1 = int( np.floor((ori_size - self._imsize) * np.random.random()) )
+        transformed_images = np.zeros([images.shape[0], self.imsize, self.imsize, 3])
+        ori_size = images.shape[1]
+        for i in range(images.shape[0]):
+            if self.train_mode:
+                h1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
+                w1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
+            else:
+                h1 = int(np.floor((ori_size - self.imsize) * 0.5))
+                w1 = int( np.floor((ori_size - self.imsize) * 0.5))
+                
+            cropped_image =\
+                images[i][w1: w1 + self.imsize, h1: h1 + self.imsize, :]
+            if random.random() > 0.5:
+                transformed_images[i] = np.fliplr(cropped_image)
+            else:
+                transformed_images[i] = cropped_image
 
-                cropped_image =\
-                    images[i][w1: w1 + self._imsize, h1: h1 + self._imsize, :]
-                if random.random() > 0.5:
-                    transformed_images[i] = np.fliplr(cropped_image)
-                else:
-                    transformed_images[i] = cropped_image
-            return transformed_images
-        else:
-            return images
+        return transformed_images
 
     def sample_embeddings(self, embeddings, filenames, class_id, sample_num):
         if len(embeddings.shape) == 2 or embeddings.shape[1] == 1:
+
             return np.squeeze(embeddings)
         else:
             batch_size, embedding_num, _ = embeddings.shape
@@ -122,158 +139,100 @@ class Dataset(object):
                     
                     sampled_embeddings.append(e_mean)
             sampled_embeddings_array = np.array(sampled_embeddings)
+            
             return np.squeeze(sampled_embeddings_array), sampled_captions
 
-    def next_batch(self, batch_size, window, super_resolution=False):
+    def next_batch(self, n_embed=None):
         """Return the next `batch_size` examples from this data set."""
 
-        start = self._index_in_epoch
-        self._index_in_epoch += batch_size
+        n_embed = self.n_embed if n_embed is None else n_embed
         
+        start = self._index_in_epoch
+        self._index_in_epoch += self.batch_size
+        # shuffle
         if self._index_in_epoch > self._num_examples:
             # Finished epoch
             self._epochs_completed += 1
             # Shuffle the data
             self._perm = np.arange(self._num_examples)
             np.random.shuffle(self._perm)
-
             # Start next epoch
             start = 0
-            self._index_in_epoch = batch_size
-            assert batch_size <= self._num_examples
+            self._index_in_epoch = self.batch_size
+            assert self.batch_size <= self._num_examples
         end = self._index_in_epoch
 
         current_ids = self._perm[start:end]
-        fake_ids = np.random.randint(self._num_examples, size=batch_size)
-        collision_flag =\
-            (self._class_id[current_ids] == self._class_id[fake_ids])
-        fake_ids[collision_flag] =\
-            (fake_ids[collision_flag] +
-             np.random.randint(100, 200)) % self._num_examples
+        fake_ids = np.random.randint(self._num_examples, size=self.batch_size)
+
+        collision_flag = (self.class_id[current_ids] == self.class_id[fake_ids])
+        fake_ids[collision_flag] = (fake_ids[collision_flag] + np.random.randint(100, 200)) % self._num_examples
         
         images_dict = OrderedDict()
         wrongs_dict = OrderedDict()
-        
 
-        sampled_images = self._images[current_ids]
-        sampled_wrong_images = self._images[fake_ids, :, :, :]
+        sampled_images = self.images[current_ids]
+        sampled_wrong_images = self.images[fake_ids, :, :, :]
         sampled_images = sampled_images.astype(np.float32)
         sampled_wrong_images = sampled_wrong_images.astype(np.float32)
         sampled_images = self.transform(sampled_images)
         sampled_wrong_images = self.transform(sampled_wrong_images)
         images_dict = {}
         wrongs_dict = {}
-        output_res = [64, 128, 256]
-        if super_resolution:
-            output_res += [512]
-                
-        for size in output_res:
-            tmp = resize_images(sampled_images, shape=[size, size])
+        
+        for size in self.output_res:
+            tmp = resize_images(sampled_images, shape=[size, size]).transpose((0,3,1,2))
             tmp = tmp * (2. / 255) - 1.
             images_dict['output_{}'.format(size)] = tmp
-            tmp = resize_images(sampled_wrong_images, shape=[size, size])
+            tmp = resize_images(sampled_wrong_images, shape=[size, size]).transpose((0,3,1,2))
             tmp = tmp * (2. / 255) - 1.
             wrongs_dict['output_{}'.format(size)] = tmp
 
-
         ret_list = [images_dict, wrongs_dict]
 
-        if self._embeddings is not None:
-            filenames = [self._filenames[i] for i in current_ids]
-            class_id = [self._class_id[i] for i in current_ids]
-            sampled_embeddings, sampled_captions = \
-                self.sample_embeddings(self._embeddings[current_ids],
-                                       filenames, class_id, window)
-            ret_list.append(sampled_embeddings)
-            ret_list.append(sampled_captions)
-        else:
-            ret_list.append(None)
-            ret_list.append(None)
-
-        if self._labels is not None:
-            ret_list.append(self._labels[current_ids])
-        else:
-            ret_list.append(None)
+        filenames = [self.filenames[i] for i in current_ids]
+        class_id = [self.class_id[i] for i in current_ids]
+        sampled_embeddings, sampled_captions = \
+            self.sample_embeddings(self.embeddings[current_ids],
+                                    filenames, class_id, n_embed)
+        ret_list.append(sampled_embeddings)
+        ret_list.append(sampled_captions)
+   
         return ret_list
 
-    def next_batch_test(self, batch_size, start, max_captions):
+    def next_batch_test(self, max_captions=1):
         """Return the next `batch_size` examples from this data set."""
+        batch_size = self.batch_size
+        
+        start = self._text_index
         if (start + batch_size) > self._num_examples:
             end = self._num_examples
-            #start = end - batch_size
-            self.end_of_data = True
+            self._text_index = 0
         else:
             end = start + batch_size
+        self._text_index += batch_size
 
-        sampled_images = self._images[start:end]
+        sampled_images = self.images[start:end]
         sampled_images = sampled_images.astype(np.float32)
+        sampled_images = self.transform(sampled_images)
         # from [0, 255] to [-1.0, 1.0]
         sampled_images = sampled_images * (2. / 255) - 1.
-        sampled_images = self.transform(sampled_images)
-
-        sampled_embeddings = self._embeddings[start:end]
+        
+        sampled_embeddings = self.embeddings[start:end]
         _, embedding_num, _ = sampled_embeddings.shape
         sampled_embeddings_batchs = []
         
         sampled_captions = []
-        sampled_filenames = self._filenames[start:end]
-        sampled_class_id = self._class_id[start:end]
+        sampled_filenames = self.filenames[start:end]
+        sampled_class_id = self.class_id[start:end]
         for i in range(len(sampled_filenames)):
             captions = self.readCaptions(sampled_filenames[i],
                                          sampled_class_id[i])
-            # print(captions)
             sampled_captions.append(captions)
 
         for i in range(np.minimum(max_captions, embedding_num)):
             batch = sampled_embeddings[:, i, :]
             sampled_embeddings_batchs.append(batch)
-            #sampled_embeddings_batchs.append(np.squeeze(batch))
-        return [sampled_images, sampled_embeddings_batchs, self._saveIDs[start:end],
-                 self._class_id[start:end], sampled_captions]
 
-class TextDataset(object):
-    def __init__(self, workdir, embedding_type, hr_lr_ratio):
-        lr_imsize = 64
-        self.hr_lr_ratio = hr_lr_ratio
-        if self.hr_lr_ratio == 1:
-            self.image_filename = '/76images.pickle'
-        elif self.hr_lr_ratio == 4:
-            self.image_filename = '/304images.pickle'
-
-        self.image_shape = [lr_imsize * self.hr_lr_ratio,
-                            lr_imsize * self.hr_lr_ratio, 3]
-        self.image_dim = self.image_shape[0] * self.image_shape[1] * 3
-        self.embedding_shape = None
-        self.train = None
-        self.test = None
-        self.workdir = workdir
-        if embedding_type == 'cnn-rnn':
-            self.embedding_filename = '/char-CNN-RNN-embeddings.pickle'
-        elif embedding_type == 'skip-thought':
-            self.embedding_filename = '/skip-thought-embeddings.pickle'
-
-    def get_data(self, pickle_path, aug_flag=True):
-        with open(pickle_path + self.image_filename, 'rb') as f:
-            images = pickle.load(f)
-            images = np.array(images)
-
-        with open(pickle_path + self.embedding_filename, 'rb') as f:
-            if sys.version_info.major > 2:
-                embeddings = pickle.load(f,  encoding="bytes")
-            else:
-                embeddings = pickle.load(f)
-            embeddings = np.array(embeddings)
-            self.embedding_shape = [embeddings.shape[-1]]
-            print('embeddings: ', embeddings.shape)
-        with open(pickle_path + '/filenames.pickle', 'rb') as f:
-            list_filenames = pickle.load(f)
-            print('list_filenames: ', len(list_filenames), list_filenames[0])
-        with open(pickle_path + '/class_info.pickle', 'rb') as f:
-            if sys.version_info.major > 2:
-                class_id = pickle.load(f, encoding="bytes")
-            else:
-                class_id = pickle.load(f)
-
-        return Dataset(images, self.image_shape[0], embeddings,
-                       list_filenames, self.workdir, None,
-                       aug_flag, class_id)
+        return [sampled_images, sampled_embeddings_batchs, self.saveIDs[start:end],
+                 self.class_id[start:end], sampled_captions]

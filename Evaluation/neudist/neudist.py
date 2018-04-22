@@ -2,21 +2,13 @@
 
 import os
 import sys, os
-
-sys.path.insert(0, os.path.join('..','..'))
-
-home = os.path.expanduser('~')
-proj_root = os.path.join('..','..')
-
-data_root  = os.path.join(proj_root, 'Data', 'Results')
-model_root = os.path.join(proj_root, 'Models')
+sys.path.insert(0, os.path.join('..'))
 
 import argparse
 import torch, h5py
 import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
-from HDGan.proj_utils.local_utils import mkdirs
 from HDGan.neuralDist.testNeuralDist  import test_nd
 from HDGan.neuralDist.neuralDistModel  import ImgSenRanking
 from HDGan.neuralDist.neuralDistModel  import ImageEncoder
@@ -32,7 +24,7 @@ if  __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=16, metavar='N',
                         help='batch size.')
     
-    parser.add_argument('--device_id', type=int, default= 0, 
+    parser.add_argument('--device_id', type=int, default=0, 
                         help='which device')
     parser.add_argument('--dataset',    type=str,      default= None, 
                         help='which dataset to use [birds or flowers]') 

@@ -45,10 +45,8 @@ def imread(imgfile):
     destRGB = cv2.cvtColor(srcBGR, cv2.COLOR_BGR2RGB)
     return destRGB
 
-def writeImg(array, savepath):      
-    #scipy.misc.imsave(savepath, array)
-    cv2.imwrite(savepath,  array)
-    
+def writeImg(array, savepath):
+    scipy.misc.imsave(savepath, array)    
 
 def imresize(img, resizeratio=1):
     '''Take care of cv2 reshape squeeze behevaior'''

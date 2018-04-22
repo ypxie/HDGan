@@ -2,9 +2,13 @@
 *.pyc
 *py~
 *.pth
+__pycache__
+HDGAN/__pycache__
+Evaluation/inception_score/inception_finetuned_models/*
+Evaluation/inception_score/inception/__pycache__
 Models/*
 Data/*
-models/*
+Results/*
 *.swp
 .vscode
 *~

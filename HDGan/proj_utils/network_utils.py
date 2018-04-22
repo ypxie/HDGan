@@ -54,49 +54,7 @@ def sample_encoded_context(mean, logsigma, kl_loss=False, epsilon=None):
 
     kl_loss = KL_loss(mean, logsigma) if kl_loss else None
     return c, kl_loss
-
-class condEmbedding(nn.Module):
-    def __init__(self, noise_dim, emb_dim, use_cond=True):
-        """
-        Parameters:
-        ----------
-        noise_dim: int
-            channel of noise vector.
-        emb_dim : int
-            the dimension of compressed sentence embedding.
-        use_cond:  list
-            wheter to inject noise into embedding vector.
-        """
-
-        super(condEmbedding, self).__init__()
-        self.register_buffer('device_id', torch.zeros(1))
-        self.noise_dim = noise_dim
-        self.emb_dim = emb_dim
-        self.use_cond = use_cond
-        if use_cond:
-            self.linear  = nn.Linear(noise_dim, emb_dim*2)
-        else:
-            self.linear  = nn.Linear(noise_dim, emb_dim)
-
-    def forward(self, inputs, kl_loss=True, epsilon=None):
-        '''
-        inputs: (B, dim)
-        return: mean (B, dim), logsigma (B, dim)
-        '''
-        #print('cont embedding',inputs.get_device(),  self.linear.weight.get_device())
-        out = F.leaky_relu( self.linear(inputs), 0.2, inplace=True )
-        
-        if self.use_cond:
-            mean = out[:, :self.emb_dim]
-            log_sigma = out[:, self.emb_dim:]
-
-            c, kl_loss = sample_encoded_context(mean, log_sigma, kl_loss, epsilon)
-            return c, kl_loss
-        else:
-            return out, 0
-
-
-    
+ 
 def pad_conv_norm(dim_in, dim_out, norm_layer, kernel_size=3, use_activation=True, 
                   use_bias=False, activation=nn.ReLU(True)):
     # designed for generators
