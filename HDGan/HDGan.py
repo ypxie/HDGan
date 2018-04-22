@@ -17,6 +17,20 @@ import json
 TINY = 1e-8
 
 
+def to_img_dict(*inputs):
+    res = {}
+   
+    inputs = inputs[0]
+    # if does not has tat scale image, we return a vector 
+    if len(inputs[0].size()) != 1: 
+        res['output_64'] = inputs[0]
+    if len(inputs[1].size()) != 1: 
+        res['output_128'] = inputs[1]
+    if len(inputs[2].size()) != 1: 
+        res['output_256'] = inputs[2]
+    mean_var = (inputs[3], inputs[4])
+    return res, mean_var
+
 def train_gans(dataset, model_root, model_name, netG, netD, args):
     """
     Parameters:
@@ -119,8 +133,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             for _ in range(ncritic):
                 ''' Sample data '''
                 images, wrong_images, np_embeddings, _ = train_sampler()
-                embeddings = to_device(
-                    np_embeddings, netD.device_id, requires_grad=False)
+                embeddings = to_device(np_embeddings, netD.device_id, requires_grad=False)
                 z.data.normal_(0, 1)
 
                 ''' update D '''
@@ -138,11 +151,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                     this_img = to_device(images[key], netD.device_id)
                     this_wrong = to_device(wrong_images[key], netD.device_id)
                     this_fake = Variable(fake_images[key].data)
-                    import pdb
-                    pdb.set_trace()
-                    real_dict = netD(this_img,   embeddings)
+            
+                    real_dict = netD(this_img, embeddings)
                     wrong_dict = netD(this_wrong, embeddings)
-                    fake_dict = netD(this_fake,  embeddings)
+                    fake_dict = netD(this_fake, embeddings)
                     real_logit,  real_img_logit_local = real_dict['pair_disc'],  real_dict['local_img_disc']
                     wrong_logit, wrong_img_logit_local = wrong_dict[
                         'pair_disc'], wrong_dict['local_img_disc']
@@ -269,31 +281,38 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             'epoch {}/{} finished [time = {}s] ...'.format(epoch, tot_epoch, end_timer))
 
 
-def compute_d_pair_loss(real_logit, wrong_logit, fake_logit):
+def get_KL_Loss(mu, logvar):
+    # import pdb; pdb.set_trace()
+    kld = mu.pow(2).add(logvar.mul(2).exp()).add(-1).mul(0.5).add(logvar.mul(-1))
+    kl_loss = torch.mean(kld)
+    return kl_loss
 
-    real_d_loss = torch.mean(((real_logit) - 1)**2)
-    wrong_d_loss = torch.mean(((wrong_logit))**2)
-    fake_d_loss = torch.mean(((fake_logit))**2)
+def compute_d_pair_loss(real_logit, wrong_logit, fake_logit,  real_labels, fake_labels):
+
+    criterion = nn.MSELoss()
+   
+    real_d_loss = criterion(real_logit, real_labels)
+    wrong_d_loss = criterion(wrong_logit, fake_labels)
+    fake_d_loss = criterion(fake_logit, fake_labels)
 
     discriminator_loss =\
         real_d_loss + (wrong_d_loss + fake_d_loss) / 2.
     return discriminator_loss
 
+def compute_d_img_loss(wrong_img_logit, real_img_logit, fake_img_logit, real_labels, fake_labels):
 
-def compute_d_img_loss(wrong_img_logit, real_img_logit, fake_logit, prob=0.5):
+    criterion = nn.MSELoss()
+    wrong_d_loss = criterion(wrong_img_logit, real_labels)
+    real_d_loss  = criterion(real_img_logit, real_labels)
+    fake_d_loss  = criterion(fake_img_logit, fake_labels)
 
-    wrong_d_loss = torch.mean(((wrong_img_logit)-1)**2)
-    real_d_loss = torch.mean(((real_img_logit)-1)**2)
-
-    real_img_d_loss = wrong_d_loss * prob + real_d_loss * (1-prob)
-    fake_d_loss = torch.mean(((fake_logit))**2)
-
-    return fake_d_loss + real_img_d_loss
+    return fake_d_loss + (wrong_d_loss+real_d_loss) / 2
 
 
-def compute_g_loss(fake_logit):
-    generator_loss = torch.mean(((fake_logit)-1)**2)
+def compute_g_loss(fake_logit, real_labels):
 
+    criterion = nn.MSELoss()
+    generator_loss = criterion(fake_logit, real_labels)
     return generator_loss
 
 

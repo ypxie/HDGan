@@ -9,45 +9,31 @@ import functools
 
 
 class condEmbedding(nn.Module):
-    def __init__(self, noise_dim, emb_dim, use_cond=True):
-        """
-        Parameters:
-        ----------
-        noise_dim: int
-            channel of noise vector.
-        emb_dim : int
-            the dimension of compressed sentence embedding.
-        use_cond:  list
-            wheter to inject noise into embedding vector.
-        """
-
+    def __init__(self, noise_dim, emb_dim):
         super(condEmbedding, self).__init__()
-        self.register_buffer('device_id', torch.zeros(1))
         self.noise_dim = noise_dim
         self.emb_dim = emb_dim
-        self.use_cond = use_cond
-        if use_cond:
-            self.linear = nn.Linear(noise_dim, emb_dim*2)
-        else:
-            self.linear = nn.Linear(noise_dim, emb_dim)
+        self.linear  = nn.Linear(noise_dim, emb_dim*2)
+        self.relu = nn.LeakyReLU(0.2, inplace=True)
 
-    def forward(self, inputs, kl_loss=True, epsilon=None):
+    def sample_encoded_context(self, mean, logsigma, kl_loss=False):
+    
+        epsilon = Variable(torch.cuda.FloatTensor(mean.size()).normal_())
+        stddev  = logsigma.exp()
+        
+        return epsilon.mul(stddev).add_(mean)
+
+    def forward(self, inputs, kl_loss=True):
         '''
         inputs: (B, dim)
         return: mean (B, dim), logsigma (B, dim)
         '''
-        #print('cont embedding',inputs.get_device(),  self.linear.weight.get_device())
-        out = F.leaky_relu(self.linear(inputs), 0.2, inplace=True)
+        out = self.relu(self.linear(inputs))
+        mean = out[:, :self.emb_dim]
+        log_sigma = out[:, self.emb_dim:]
 
-        if self.use_cond:
-            mean = out[:, :self.emb_dim]
-            log_sigma = out[:, self.emb_dim:]
-
-            c, kl_loss = sample_encoded_context(
-                mean, log_sigma, kl_loss, epsilon)
-            return c, kl_loss
-        else:
-            return out, 0
+        c = self.sample_encoded_context(mean, log_sigma)
+        return c, mean, log_sigma
 
 #-----------------------------------------------#
 #    used to encode image into feature maps     #
@@ -68,7 +54,6 @@ class ImageDown(torch.nn.Module):
         """
 
         super(ImageDown, self).__init__()
-        self.register_buffer('device_id', torch.zeros(1))
         self.__dict__.update(locals())
 
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
@@ -219,14 +204,12 @@ class Generator(nn.Module):
         """
 
         super(Generator, self).__init__()
-        # print('locals of gen: ', locals())
         self.__dict__.update(locals())
-        self.register_buffer('device_id', torch.IntTensor(1))
 
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
         act_layer = nn.ReLU(True)
+        self.condEmbedding = condEmbedding(sent_dim, emb_dim)
 
-        self.condEmbedding = condEmbedding(sent_dim, emb_dim, use_cond=True)
         self.vec_to_tensor = Sent2FeatMap(
             emb_dim+noise_dim, 4, 4, self.hid_dim*8)
         self.side_output_at = side_output_at
@@ -277,10 +260,8 @@ class Generator(nn.Module):
         kl_loss: tensor
             Kullback–Leibler divergence loss from conditionining embedding
         """
-
-        out_dict = OrderedDict()
-        sent_random, kl_loss = self.condEmbedding(
-            sent_embeddings)  # sent_random [B, 128]
+        
+        sent_random, mean, logsigma = self.condEmbedding(sent_embeddings) 
 
         text = torch.cat([sent_random, z], dim=1)
 
@@ -292,17 +273,17 @@ class Generator(nn.Module):
 
         # skip 4x4 feature map to 32 and send to 64
         x_64 = self.scale_64(x_32)
-        out_dict['output_64'] = self.tensor_to_img_64(x_64)
+        output_64 = self.tensor_to_img_64(x_64)
 
         # skip 8x8 feature map to 64 and send to 128
         x_128 = self.scale_128(x_64)
-        out_dict['output_128'] = self.tensor_to_img_128(x_128)
+        output_128 = self.tensor_to_img_128(x_128)
 
         # skip 16x16 feature map to 128 and send to 256
         out_256 = self.scale_256(x_128)
-        out_dict['output_256'] = self.tensor_to_img_256(out_256)
+        output_256 = self.tensor_to_img_256(out_256)
 
-        return out_dict, kl_loss
+        return output_64, output_128, output_256, mean, logsigma
 
 
 class Discriminator(torch.nn.Module):
@@ -321,8 +302,8 @@ class Discriminator(torch.nn.Module):
         """
 
         super(Discriminator, self).__init__()
-        self.register_buffer('device_id', torch.IntTensor(1))
         self.__dict__.update(locals())
+
         activ = nn.LeakyReLU(0.2, True)
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
 
@@ -397,7 +378,5 @@ class Discriminator(torch.nn.Module):
         pair_disc_out = pair_disc(sent_code, img_code)
 
         local_img_disc_out = local_img_disc(img_code)
-        out_dict['local_img_disc'] = local_img_disc_out
-        out_dict['pair_disc'] = pair_disc_out
 
-        return out_dict
+        return pair_disc_out, local_img_disc_out
