@@ -30,10 +30,7 @@ class Dataset(object):
             self.output_res = [64]
         self.embedding_filename = '/char-CNN-RNN-embeddings.pickle'
         self.image_shape = [img_size, img_size, 3]
-        # self.image_dim = self.image_shape[0] * self.image_shape[1] * 3
-        # self.embedding_shape = None
-        # self.train = None
-        # self.test = None
+
         self.batch_size = batch_size
         self.n_embed = n_embed
 
@@ -50,9 +47,10 @@ class Dataset(object):
         self._epochs_completed = -1
         self.saveIDs = np.arange(self._num_examples)
 
-        print('-> init data loader ', mode)
+        print('>> Init basic data loader ', mode)
         print('\t {} samples'.format(self._num_examples))
         print('\t {} output resolutions'.format(self.output_res))
+        print ('\t {} embeddings used'.format(n_embed))
         
     def get_data(self, pickle_path):
         with open(pickle_path + self.image_filename, 'rb') as f:
@@ -212,10 +210,8 @@ class Dataset(object):
             end = start + batch_size
         self._text_index += batch_size
 
-        sampled_images = self.images[start:end]
-        sampled_images = sampled_images.astype(np.float32)
+        sampled_images = self.images[start:end].astype(np.float32)
         sampled_images = self.transform(sampled_images)
-        # from [0, 255] to [-1.0, 1.0]
         sampled_images = sampled_images * (2. / 255) - 1.
         
         sampled_embeddings = self.embeddings[start:end]
@@ -234,5 +230,5 @@ class Dataset(object):
             batch = sampled_embeddings[:, i, :]
             sampled_embeddings_batchs.append(batch)
 
-        return [sampled_images, sampled_embeddings_batchs, self.saveIDs[start:end],
-                 self.class_id[start:end], sampled_captions]
+        return [sampled_images, sampled_embeddings_batchs, sampled_captions,
+                self.saveIDs[start:end], self.class_id[start:end]]

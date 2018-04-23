@@ -51,7 +51,7 @@ if __name__ == '__main__':
                         help='learning rate (default: 0.01)')
     parser.add_argument('--d_lr', type=float, default=0.0002, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--save_freq', type=int, default=3, metavar='N',
+    parser.add_argument('--save_freq', type=int, default=5, metavar='N',
                         help='how frequent to save the model')
     parser.add_argument('--display_freq', type=int, default=200, metavar='N',
                         help='plot the results every {} batches')
@@ -82,13 +82,12 @@ if __name__ == '__main__':
     # Discriminator
     netD = Discriminator(num_chan=3, hid_dim=128, sent_dim=1024, emb_dim=128)
 
-    gpus = [int(ix) for ix in args.gpus.split(',')]
-    assert(gpus[0] == 0)
+    gpus = [a for a in range(len(args.gpus.split(',')))]
     torch.cuda.set_device(gpus[0])
     assert(args.batch_size % len(gpus) == 0)
-
+    args.batch_size = args.batch_size * len(gpus)
     if args.cuda:
-        print ('>> Parallel models in {} GPUS'.format(len(gpus)))
+        print ('>> Parallel models in {} GPUS'.format(gpus))
         netD = nn.parallel.DataParallel(netD, device_ids=range(len(gpus)))
         netG = nn.parallel.DataParallel(netG, device_ids=range(len(gpus)))
 
@@ -107,6 +106,6 @@ if __name__ == '__main__':
 
     model_name = '{}_{}'.format(args.model_name, data_name)
 
-    print('>> START training ')
+    print('>> Start training ...')
     train_gans((dataset_train, dataset_test),
                model_root, model_name, netG, netD, args)

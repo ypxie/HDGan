@@ -174,7 +174,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     fixed_z_data = [torch.FloatTensor(args.batch_size, args.noise_dim).normal_(
         0, 1) for _ in range(args.test_sample_num)]
     fixed_z_list = [to_device(a) for a in fixed_z_data]
-    
+
+    # not a good way
     REAL_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(1)).cuda()
     FAKE_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(0)).cuda()
     REAL_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 4, 4).fill_(1)).cuda()

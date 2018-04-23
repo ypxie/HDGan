@@ -43,7 +43,7 @@ if  __name__ == '__main__':
                         help='target image size.')
     parser.add_argument('--test_sample_num', type=int, default=  None, 
                         help='The number of runs for each embeddings when testing')
-    parser.add_argument('--save_visual_results', type=bool, default=False, 
+    parser.add_argument('--save_visual_results', action='store_true',
                         help='if save visual results in folders')
 
     args = parser.parse_args()
@@ -61,7 +61,7 @@ if  __name__ == '__main__':
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
 
-    dataset = Dataset(datadir, img_size=args.finest_size, batch_size=args.batch_size, n_embed=1, mode='test')
+    dataset = Dataset(datadir, img_size=args.finest_size, batch_size=args.batch_size, n_embed=1, mode='test', multithread=False)
     model_name = args.model_name  
     
     save_folder  = os.path.join(save_root, args.dataset, model_name + '_testing_num_{}'.format(args.test_sample_num) )

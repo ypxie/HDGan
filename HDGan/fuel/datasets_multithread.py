@@ -54,9 +54,13 @@ class Dataset(object):
         self.train_mode = mode == 'train'
         self.get_data(os.path.join(self.workdir, mode))
 
-        print('-> init data loader ', mode)
+        self._text_index = 0
+        self._saveIDs = np.arange(self._num_examples)
+        self._classIDs = np.zeros(self._num_examples)
+        print('>> Init COCO data loader ', mode)
         print('\t {} samples'.format(self._num_examples))
         print('\t {} output resolutions'.format(self.output_res))
+        print ('\t {} embeddings used'.format(n_embed))
         
     def get_data(self, data_dir):
         
@@ -88,8 +92,8 @@ class Dataset(object):
         
         self._num_examples = len(self.filenames)
         
-    def readCaptions(self, filenames):
-        cap = self.captions[filenames]
+    def readCaptions(self, filename):
+        cap = self.captions[filename]
         return cap
 
     def transform(self, images):
@@ -101,6 +105,7 @@ class Dataset(object):
                 h1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
                 w1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
             else:
+                # center crop
                 h1 = int(np.floor((ori_size - self.imsize) * 0.5))
                 w1 = int(np.floor((ori_size - self.imsize) * 0.5))
                 
@@ -195,10 +200,11 @@ class Dataset(object):
             end = start + batch_size
         self._text_index += batch_size
 
-        sampled_images = self.images[start:end]
-        sampled_images = sampled_images.astype(np.float32)
+        current_ids = range(start, end)
+        sampled_filenames = [self.filenames[i].decode() for i in current_ids]
+
+        sampled_images = self.images(sampled_filenames).astype(np.float32)
         sampled_images = self.transform(sampled_images)
-        # from [0, 255] to [-1.0, 1.0]
         sampled_images = sampled_images * (2. / 255) - 1.
         
         sampled_embeddings = self.embeddings[start:end]
@@ -206,7 +212,6 @@ class Dataset(object):
         sampled_embeddings_batchs = []
         
         sampled_captions = []
-        sampled_filenames = self.filenames[start:end]
         for i in range(len(sampled_filenames)):
             captions = self.readCaptions(sampled_filenames[i])
             sampled_captions.append(captions)
@@ -215,7 +220,7 @@ class Dataset(object):
             batch = sampled_embeddings[:, i, :]
             sampled_embeddings_batchs.append(batch)
 
-        return [sampled_images, sampled_embeddings_batchs, sampled_captions]
+        return [sampled_images, sampled_embeddings_batchs, sampled_captions, self._saveIDs[start:end], self._classIDs[start:end]]
 
     def __len__(self):
         return self._num_examples
@@ -223,8 +228,7 @@ class Dataset(object):
 class COCODataset():
 
     def __init__(self, data_dir, img_size, batch_size, num_embed, mode='train', threads=0, drop_last=True):
-        print ('create multithread loader with {} threads ...'.format(threads))
-
+        print ('>> create multithread loader with {} threads ...'.format(threads))
         self.dataset = Dataset(data_dir, img_size=img_size, batch_size=batch_size, n_embed=num_embed, mode=mode)
         self.dataloader = torch.utils.data.DataLoader(
             self.dataset,
