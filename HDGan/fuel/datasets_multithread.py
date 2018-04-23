@@ -10,14 +10,8 @@ import sys, os
 import scipy.misc as misc
 import torch.utils.data
 from functools import partial
+from .datasets_basic import resize_images
 
-
-def resize_images(tensor, shape):
-    out = []
-    for k in range(tensor.shape[0]):
-        tmp = misc.imresize(tensor[k], shape)
-        out.append(tmp[np.newaxis,:,:,:])
-    return np.concatenate(out, axis=0)
 
 def img_loader_func(img_names, imgpath=None, img_size=256):
     res = []

@@ -5,13 +5,10 @@ import os
 import sys, os
 
 sys.path.insert(0, os.path.join('..','..'))
-
-home = os.path.expanduser('~')
 proj_root  = os.path.join('..','..')
 data_root  = os.path.join(proj_root, 'Data')
 model_root = os.path.join(proj_root, 'Models')
 save_root  =  os.path.join(proj_root, 'Results')
-
 import numpy as np
 import argparse, os
 import torch, h5py
@@ -34,14 +31,14 @@ if  __name__ == '__main__':
                         help='which device')
     parser.add_argument('--load_from_epoch', type=int, default= 0, 
                         help='load from epoch')
-    parser.add_argument('--model_name', type=str, default = None)
+    parser.add_argument('--model_name', type=str, default=None)
     parser.add_argument('--dataset',    type=str,      default= None, 
                         help='which dataset to use [birds or flowers]') 
-    parser.add_argument('--noise_dim', type=int, default= 100, metavar='N',
+    parser.add_argument('--noise_dim', type=int, default=100, metavar='N',
                         help='the dimension of noise.')
     parser.add_argument('--finest_size', type=int, default=256, metavar='N',
                         help='target image size.')
-    parser.add_argument('--test_sample_num', type=int, default=  None, 
+    parser.add_argument('--test_sample_num', type=int, default=None, 
                         help='The number of runs for each embeddings when testing')
     parser.add_argument('--save_visual_results', action='store_true',
                         help='if save visual results in folders')
@@ -49,9 +46,13 @@ if  __name__ == '__main__':
     args = parser.parse_args()
     
     args.cuda = torch.cuda.is_available()
-
-    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)      
     
+    if args.finest_size <= 256:
+        netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)      
+    else:
+        from HDGan.models.hd_networks import GeneratorSuperL1Loss
+        netG = GeneratorSuperL1Loss(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=2)
+
     datadir = os.path.join(data_root, args.dataset)
 
     device_id = getattr(args, 'device_id', 0)

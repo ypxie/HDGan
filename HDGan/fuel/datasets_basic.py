@@ -11,6 +11,8 @@ import scipy.misc as misc
 #-------------------------------------------------------------------------#
 
 def resize_images(tensor, shape):
+    if tensor.shape[1] == shape[1] and tensor.shape[0] == shape[0]:
+        return tensor
     out = []
     for k in range(tensor.shape[0]):
         tmp = misc.imresize(tensor[k], shape)
@@ -34,7 +36,7 @@ class Dataset(object):
         self.batch_size = batch_size
         self.n_embed = n_embed
 
-        self.imsize = img_size
+        self.imsize = min(img_size, 256)
         self.workdir = workdir
         self.train_mode = mode == 'train'
         self.get_data(os.path.join(self.workdir, mode))
@@ -96,16 +98,18 @@ class Dataset(object):
         
         transformed_images = np.zeros([images.shape[0], self.imsize, self.imsize, 3])
         ori_size = images.shape[1]
-        for i in range(images.shape[0]):
+        # if ori_size < self.imsize:
+        #     ori_size = int(self.imsize * (304/256))
+        #     images = resize_images(images, shape=[ori_size, ori_size])
+
+        for i in range(images.shape[0]):    
             if self.train_mode:
                 h1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
                 w1 = int( np.floor((ori_size - self.imsize) * np.random.random()) )
             else:
                 h1 = int(np.floor((ori_size - self.imsize) * 0.5))
-                w1 = int( np.floor((ori_size - self.imsize) * 0.5))
-                
-            cropped_image =\
-                images[i][w1: w1 + self.imsize, h1: h1 + self.imsize, :]
+                w1 = int(np.floor((ori_size - self.imsize) * 0.5))
+            cropped_image = images[i][w1: w1 + self.imsize, h1: h1 + self.imsize, :]
             if random.random() > 0.5:
                 transformed_images[i] = np.fliplr(cropped_image)
             else:

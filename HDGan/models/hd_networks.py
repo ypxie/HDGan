@@ -281,6 +281,7 @@ class Generator(nn.Module):
 
         # skip 16x16 feature map to 128 and send to 256
         out_256 = self.scale_256(x_128)
+        self.keep_out_256 = out_256
         output_256 = self.tensor_to_img_256(out_256)
 
         return output_64, output_128, output_256, mean, logsigma
@@ -374,3 +375,58 @@ class Discriminator(torch.nn.Module):
         local_img_disc_out = local_img_disc(img_code)
 
         return pair_disc_out, local_img_disc_out
+
+
+
+class GeneratorSuperL1Loss(nn.Module):
+    # for 512 resolution
+    def __init__(self, sent_dim, noise_dim, emb_dim, hid_dim, num_resblock=2):
+
+        super(GeneratorSuperL1Loss, self).__init__()
+        self.__dict__.update(locals())
+        print('>> Init a HDGAN 512Generator (resblock={})'.format(num_resblock))
+        
+        norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
+        act_layer = nn.ReLU(True)
+        
+        self.generator_256 = Generator(sent_dim, noise_dim, emb_dim, hid_dim)
+
+        # puch it to every high dimension
+        scale = 512
+        cur_dim = 64
+        seq = []
+        for i in range(num_resblock):
+            seq += [ResnetBlock(cur_dim)]
+        
+        seq += [nn.Upsample(scale_factor=2, mode='nearest')]
+        seq += [pad_conv_norm(cur_dim, cur_dim//2, norm_layer, activation=act_layer)]
+        cur_dim = cur_dim // 2
+
+        setattr(self, 'scale_%d'%(scale), nn.Sequential(*seq) )
+        setattr(self, 'tensor_to_img_%d'%(scale), branch_out(cur_dim))
+        self.apply(weights_init)
+
+    def parameters(self):
+        
+        fixed = list(self.generator_256.parameters())
+        all_params = list(self.parameters())
+        partial_params = list(set(all_params) - set(fixed))
+
+        print ('WARNING: fixed params {} training params {}'.format(len(fixed), len(partial_params)))
+        print('          It is not working if you can train all from scratch')
+        
+        return partial_params
+
+    def forward(self, sent_embeddings, z):
+
+        output_64, output_128, output_256, mean, logsigma = self.generator_256(sent_embeddings, z)
+        scale_256 = self.generator_256.keep_out_256.detach() 
+        scale_512 = self.scale_512(scale_256)
+        up_img_256 = F.upsample(output_256.detach(), (512,512), mode='bilinear')
+
+        output_512 = self.tensor_to_img_512(scale_512)
+
+        # self-regularize the 512 generator
+        pwloss =  F.l1_loss(output_512, up_img_256)
+
+        return output_64, output_128, output_256, output_512, pwloss

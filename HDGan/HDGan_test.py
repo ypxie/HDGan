@@ -42,9 +42,9 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     weights_dict = torch.load(G_weightspath, map_location=lambda storage, loc: storage)
     #load_partial_state_dict(netG, weights_dict)
     sample_weight_name = [a for a in weights_dict.keys()][0]
-    if 'module' in sample_weight_name: # the saved model is wrapped by DataParallel. 
+    if 'module' in sample_weight_name: # if the saved model is wrapped by DataParallel. 
         netG = nn.parallel.DataParallel(netG, device_ids=[0])
-    ## TODO note that strict is set to false for now
+    ## TODO note that strict is set to false for now. It is a bit risky
     netG.load_state_dict(weights_dict, strict=False)
 
     testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)

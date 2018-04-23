@@ -17,27 +17,30 @@ import json
 TINY = 1e-8
 
 
-def to_img_dict(*inputs):
+def to_img_dict( * inputs):
+    if type(inputs[0]) == tuple:
+        inputs = inputs[0]
     res = {}
-   
-    inputs = inputs[0]
-    # if does not has tat scale image, we return a vector 
-    if len(inputs[0].size()) != 1: 
-        res['output_64'] = inputs[0]
-    if len(inputs[1].size()) != 1: 
-        res['output_128'] = inputs[1]
-    if len(inputs[2].size()) != 1: 
-        res['output_256'] = inputs[2]
-    mean_var = (inputs[3], inputs[4])
-    
-    return res, mean_var
+    res['output_64'] = inputs[0]
+    res['output_128'] = inputs[1]
+    res['output_256'] = inputs[2]
+
+    if len(inputs) == 4:
+        # from Generator
+        mean_var = (inputs[3], inputs[4])
+        loss = mean_var
+    elif len(inputs) == 5:
+        # from GeneratorL1Loss of 512HDGAN
+        res['output_512'] = inputs[3]
+        l1loss = inputs[4] # l1 loss
+        loss = l1loss
+
+    return res, loss
 
 def get_KL_Loss(mu, logvar):
-    # import pdb; pdb.set_trace()
     kld = mu.pow(2).add(logvar.mul(2).exp()).add(-1).mul(0.5).add(logvar.mul(-1))
     kl_loss = torch.mean(kld)
     return kl_loss
-
 
 def compute_d_pair_loss(real_logit, wrong_logit, fake_logit, real_labels, fake_labels):
 
@@ -262,9 +265,15 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             # fake_images, kl_loss = netG(embeddings, z)
 
             loss_val = 0
-            kl_loss = get_KL_Loss(mean_var[0], mean_var[1])
-            kl_loss_val = kl_loss.cpu().data.numpy().mean()
-            generator_loss = args.KL_COE*kl_loss
+            if type(mean_var) == tuple:
+                kl_loss = get_KL_Loss(mean_var[0], mean_var[1])
+                kl_loss_val = kl_loss.cpu().data.numpy().mean()
+                generator_loss = args.KL_COE * kl_loss
+            else:
+                # when trian 512HDGAN. KL loss is fixed.
+                # Here we optimize pixel-wise l1 loss
+                generator_loss = mean_var
+
             kl_loss_plot.plot(kl_loss_val)
             #---- iterate over image of different sizes ----#
             '''Compute gen loss'''
