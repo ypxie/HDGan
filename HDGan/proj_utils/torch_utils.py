@@ -23,8 +23,7 @@ def to_variable(x, requires_grad=True,  var=True,volatile=False):
     
     return x
 
-def to_device(src, ref, var = True, volatile = False, requires_grad=True):
+def to_device(src, var = True, volatile = False, requires_grad=True):
     requires_grad = requires_grad and (not volatile)
-    src = to_variable(src, var=var, volatile=volatile,requires_grad=requires_grad)
-    return src.cuda(ref.get_device()) if ref.is_cuda else src
-
+    src = to_variable(src, var=var, volatile=volatile, requires_grad=requires_grad)
+    return src.cuda()

@@ -39,7 +39,7 @@ if  __name__ == '__main__':
                         help='which dataset to use [birds or flowers]') 
     parser.add_argument('--noise_dim', type=int, default= 100, metavar='N',
                         help='the dimension of noise.')
-    parser.add_argument('--img_size', type=int, default=256, metavar='N',
+    parser.add_argument('--finest_size', type=int, default=256, metavar='N',
                         help='target image size.')
     parser.add_argument('--test_sample_num', type=int, default=  None, 
                         help='The number of runs for each embeddings when testing')
@@ -61,8 +61,7 @@ if  __name__ == '__main__':
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
 
-    dataset = Dataset(datadir, img_size=args.img_size, mode='test')
-
+    dataset = Dataset(datadir, img_size=args.finest_size, batch_size=args.batch_size, n_embed=1, mode='test')
     model_name = args.model_name  
     
     save_folder  = os.path.join(save_root, args.dataset, model_name + '_testing_num_{}'.format(args.test_sample_num) )

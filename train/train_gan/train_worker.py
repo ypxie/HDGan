@@ -69,30 +69,41 @@ if __name__ == '__main__':
                         help='kl divergency coefficient.')
     parser.add_argument('--visdom_port', type=int, default=8097,
                         help='The port should be the same with the port when launching visdom')
-
+    parser.add_argument('--gpus', type=str, default='0', 
+                        help='which gpu')
     # add more
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available()
     print(args)
-
+    
     # Generator
     netG = Generator(sent_dim=1024, noise_dim=args.noise_dim,
                      emb_dim=128, hid_dim=128, num_resblock=1)
     # Discriminator
     netD = Discriminator(num_chan=3, hid_dim=128, sent_dim=1024, emb_dim=128)
 
+    gpus = [int(ix) for ix in args.gpus.split(',')]
+    assert(gpus[0] == 0)
+    torch.cuda.set_device(gpus[0])
+    assert(args.batch_size % len(gpus) == 0)
+
     if args.cuda:
-        netD = netD.cuda(args.device_id)
-        netG = netG.cuda(args.device_id)
+        print ('>> Parallel models in {} GPUS'.format(len(gpus)))
+        netD = nn.parallel.DataParallel(netD, device_ids=range(len(gpus)))
+        netG = nn.parallel.DataParallel(netG, device_ids=range(len(gpus)))
+
+        netD = netD.cuda()
+        netG = netG.cuda()
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
 
     data_name = args.dataset
     datadir = os.path.join(data_root, data_name)
+
     dataset_train = Dataset(datadir, img_size=args.finest_size,
                             batch_size=args.batch_size, n_embed=args.num_emb, mode='train')
     dataset_test = Dataset(datadir, img_size=args.finest_size,
-                           batch_size=args.batch_size, n_embed=args.num_emb, mode='test')
+                           batch_size=args.batch_size, n_embed=1, mode='test')
 
     model_name = '{}_{}'.format(args.model_name, data_name)
 

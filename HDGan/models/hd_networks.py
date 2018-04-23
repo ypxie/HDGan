@@ -11,6 +11,7 @@ import functools
 class condEmbedding(nn.Module):
     def __init__(self, noise_dim, emb_dim):
         super(condEmbedding, self).__init__()
+        
         self.noise_dim = noise_dim
         self.emb_dim = emb_dim
         self.linear  = nn.Linear(noise_dim, emb_dim*2)

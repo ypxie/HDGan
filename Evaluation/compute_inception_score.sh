@@ -1,5 +1,5 @@
 
-
+# download /inception_finetuned_models in to inception_score/. See Readme
 
 CUDA_VISIBLE_DEVICES=1 python inception_score/inception_score.py \
             --checkpoint_dir ./inception_score/inception_finetuned_models/birds_valid299/model.ckpt \

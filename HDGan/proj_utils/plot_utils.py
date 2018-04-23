@@ -7,7 +7,7 @@ import random
 import scipy.misc
 from scipy.misc import imsave
 from .local_utils import imshow, writeImg, normalize_img
-_port = 43426
+_port = 43427
 print('-'*50)
 print('Launch python -m visdom.server -port {} to monitor'.format(_port))
 print('-'*50)
@@ -17,8 +17,6 @@ print('-'*50)
 #      plot_cls = plot_scalar()         #
 #      plot_cls.plot(your_loss)         #
 #---------------------------------------#
-
-
 class plot_scalar(object):
     def __init__(self, name='default', env='main', rate=1, handler=None, port=_port):
         """
