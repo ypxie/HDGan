@@ -31,7 +31,7 @@ Download preprocessed data in /Data.
 To use multiple GPUs, simply set device='0,1,3,8' as a set of gpu ids.
 
 Monitor your training in two ways
-- Launch Visdom (see [here](https://github.com/facebookresearch/visdom)): `python -m visdom.server -port 43426` (keep the same with __port_ in plot_utils.py). Then access http://localhost:8097 from the browser.
+- Launch Visdom (see [here](https://github.com/facebookresearch/visdom)): `python -m visdom.server -port 43426` (keep the same port id with __port_ defined in plot_utils.py). Then access http://localhost:43426 from the browser.
 - Check fixed sample results per epoch in the checkpoint folder.
 
 ## Testing

@@ -7,10 +7,10 @@ import random
 import scipy.misc
 from scipy.misc import imsave
 from .local_utils import imshow, writeImg, normalize_img
-_port = 43427
-print('-'*50)
+_port = 43426
+print('-'*60)
 print('Launch python -m visdom.server -port {} to monitor'.format(_port))
-print('-'*50)
+print('-'*60)
 
 #---------------------------------------#
 #      Class used for plotting loss     #
