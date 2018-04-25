@@ -1,5 +1,5 @@
 ## Hierarchically-nested Adversarial Network (Pytorch implementation)
-###### We call our method **HDGAN**, referring to HighDefinition results and the idea of Hierarchically-nested Discriminators
+###### We call our method **HDGAN**, referring to **H**igh-**D**efinition results and the idea of **H**ierarchically-nested **D**iscriminators
 
 > [Zizhao Zhang*, Yuanpu Xie*, Lin Yang, "Photographic Text-to-Image Synthesis with a Hierarchically-nested Adversarial Network", CVPR (2018)](https://arxiv.org/abs/1802.09178) * indicates contribution
 
@@ -12,8 +12,8 @@ Visual results (Left: compared against StackGAN; Right: multi-resolution generat
 </p>
 
 ## Dependencies
-- python 3
-- pytorch
+- Python 3
+- Pytorch 0.3.1
 - Anaconda 3.6
 
 ## Data
@@ -35,7 +35,10 @@ Monitor your training in two ways
 - Check fixed sample results per epoch in the checkpoint folder.
 
 ## Testing
-- To generate images, goto test/test_gan:   `bash test_birds.sh` for birds, and  `bash test_flowers.sh` for flower. 
+- Go to test/test_gan:   
+- `sh test_birds.sh` for birds
+- `sh test_flowers.sh` for flower
+- `sh test_coco.sh` for coco
 
 ## Evaluation
 We provide multiple evaluation metrics to ease test. Evaluation needs the sampled results obtained in Testing and saved in ./Results.
