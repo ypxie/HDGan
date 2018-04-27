@@ -28,9 +28,9 @@ Download preprocessed data in /Data.
 - For flower: goto train/train_gan:  `device=0 sh train_flower.sh`
 - For coco: goto train/train_gan:  `device=0,1 sh train_coco.sh`
 
-To use multiple GPUs, simply set device='0,1,3,8' as a set of gpu ids.
+To use multiple GPUs, simply set device='0,1,..' as a set of gpu ids.
 
-Monitor your training in two ways
+### Monitor your training in two ways
 - Launch Visdom (see [here](https://github.com/facebookresearch/visdom)): `python -m visdom.server -port 43426` (keep the same port id with __port_ defined in plot_utils.py). Then access http://localhost:43426 from the browser.
 - Check fixed sample results per epoch in the checkpoint folder.
 
@@ -65,7 +65,7 @@ We provide pretrained models for birds, flowers, and coco.
 If you find HDGAN useful in your research, please cite:
 
 ```
-@inproceedings{hdgan,
+@inproceedings{zhang2018hdgan,
 Author = {Zizhao Zhang and Yuanpu Xie and Lin Yang},
 Title = {Photographic Text-to-Image Synthesis with a Hierarchically-nested Adversarial Network},
 Year = {2018},

@@ -50,7 +50,7 @@ class Dataset(object):
         self.saveIDs = np.arange(self._num_examples)
 
         print('>> Init basic data loader ', mode)
-        print('\t {} samples'.format(self._num_examples))
+        print('\t {} samples (batch_size = {})'.format(self._num_examples, self.batch_size))
         print('\t {} output resolutions'.format(self.output_res))
         print ('\t {} embeddings used'.format(n_embed))
         

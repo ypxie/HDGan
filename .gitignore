@@ -12,6 +12,7 @@ HDGan/models/__pycache__
 HDGan/fuel/__pycache__
 HDGan/__pycache__
 Models/*
+Models_local/*
 Data/*
 Results/*
 *.swp

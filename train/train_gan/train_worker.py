@@ -77,14 +77,12 @@ if __name__ == '__main__':
     print(args)
     
     # Generator
-    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim,
-                     emb_dim=128, hid_dim=128, num_resblock=1)
+    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)
     # Discriminator
     netD = Discriminator(num_chan=3, hid_dim=128, sent_dim=1024, emb_dim=128)
 
     gpus = [a for a in range(len(args.gpus.split(',')))]
     torch.cuda.set_device(gpus[0])
-    assert(args.batch_size % len(gpus) == 0)
     args.batch_size = args.batch_size * len(gpus)
     if args.cuda:
         print ('>> Parallel models in {} GPUS'.format(gpus))

@@ -14,22 +14,22 @@ from .proj_utils.plot_utils import *
 from .proj_utils.torch_utils import *
 import time
 import json
-TINY = 1e-8
+import functools 
 
 
-def to_img_dict( * inputs):
+def to_img_dict_(*inputs, super512=False):
     if type(inputs[0]) == tuple:
         inputs = inputs[0]
     res = {}
     res['output_64'] = inputs[0]
     res['output_128'] = inputs[1]
     res['output_256'] = inputs[2]
-
-    if len(inputs) == 4:
+    # generator returns different things for 512HDGAN
+    if not super512:
         # from Generator
         mean_var = (inputs[3], inputs[4])
         loss = mean_var
-    elif len(inputs) == 5:
+    else:
         # from GeneratorL1Loss of 512HDGAN
         res['output_512'] = inputs[3]
         l1loss = inputs[4] # l1 loss
@@ -118,7 +118,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     train_sampler = iter(dataset[0]).next
     test_sampler = iter(dataset[1]).next
 
-    updates_per_epoch = int(len(dataset[0]) / args.batch_size)
+    updates_per_epoch = int(dataset[0]._num_examples / args.batch_size)
 
     ''' configure optimizer '''
     optimizerD = optim.Adam(netD.parameters(), lr=d_lr, betas=(0.5, 0.999))
@@ -178,7 +178,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
         0, 1) for _ in range(args.test_sample_num)]
     fixed_z_list = [to_device(a) for a in fixed_z_data]
 
-    # not a good way
+    # create discrimnator label placeholder (not a good way)
     REAL_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(1)).cuda()
     FAKE_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(0)).cuda()
     REAL_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 4, 4).fill_(1)).cuda()
@@ -190,6 +190,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
         else:
             return REAL_local_LABELS.view_as(logit), FAKE_local_LABELS.view_as(logit)
 
+    to_img_dict = functools.partial(to_img_dict_, super512=args.finest_size == 512)
     #--------Start training------------#
     for epoch in range(start_epoch, tot_epoch):
         start_timer = time.time()
@@ -315,9 +316,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             if idx_test == 0:
                 test_images, test_embeddings = fixed_images, fixed_embeddings
             else:
-                test_images, _, test_embeddings, _ = test_sampler()
-                test_embeddings = to_device(
-                    test_embeddings, netG.device_id, volatile=True)
+                test_images, _, test_embeddings, _, _ = test_sampler()
+                test_embeddings = to_device(test_embeddings)
                 testing_z = Variable(z.data, volatile=True)
             tmp_samples = {}
             for t in range(args.test_sample_num):
@@ -325,8 +325,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                     testing_z = fixed_z_list[t]
                 else:
                     testing_z.data.normal_(0, 1)
-                samples, _ = to_img_dict(netG(test_embeddings, testing_z))
-                 
+                fake_images, _ = to_img_dict(netG(test_embeddings, testing_z))
+                samples = fake_images
                 if idx_test == 0 and t == 0:
                     for k in samples.keys():
                         #  +1 to make space for real image
@@ -355,19 +355,17 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
 
         ''' save weights '''
         if epoch % args.save_freq == 0:
-            if 'DataParallel' in str(type(netD)):
-                netD_ = netD.module
-                netG_ = netG.module
-            netD_ = netD_.cpu()
-            netG_ = netG_.cpu()
+            netD = netD.cpu()
+            netG = netG.cpu()
+            netD_ = netD.module if 'DataParallel' in str(type(netD)) else netD
+            netG_ = netG.module if 'DataParallel' in str(type(netD)) else netG
             torch.save(netD_.state_dict(), os.path.join(
                 model_folder, 'D_epoch{}.pth'.format(epoch)))
             torch.save(netG_.state_dict(), os.path.join(
                 model_folder, 'G_epoch{}.pth'.format(epoch)))
             print('save weights at {}'.format(model_folder))
-
-            netD = netD.cuda(args.device_id)
-            netG = netG.cuda(args.device_id)
+            netD = netD.cuda()
+            netG = netG.cuda()
         print(
             'epoch {}/{} finished [time = {}s] ...'.format(epoch, tot_epoch, end_timer))
 

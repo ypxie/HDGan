@@ -16,4 +16,4 @@ def Dataset(datadir, img_size, batch_size, n_embed, mode, multithread=True):
             # we do not need parallel in testing
             return BasicCOCODataset(datadir, img_size=img_size, batch_size=batch_size, n_embed=n_embed, mode=mode)
         else:
-            return COCODataset(datadir, img_size, batch_size, n_embed, mode, threads=0).load_data()
+            return COCODataset(datadir, img_size, batch_size, n_embed, mode, threads=2).load_data()

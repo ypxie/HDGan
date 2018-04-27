@@ -52,7 +52,7 @@ class Dataset(object):
         self._saveIDs = np.arange(self._num_examples)
         self._classIDs = np.zeros(self._num_examples)
         print('>> Init COCO data loader ', mode)
-        print('\t {} samples'.format(self._num_examples))
+        print('\t {} samples (batch_size = {})'.format(self._num_examples, self.batch_size))
         print('\t {} output resolutions'.format(self.output_res))
         print ('\t {} embeddings used'.format(n_embed))
         
@@ -221,7 +221,7 @@ class Dataset(object):
 
 class COCODataset():
 
-    def __init__(self, data_dir, img_size, batch_size, num_embed, mode='train', threads=0, drop_last=True):
+    def __init__(self, data_dir, img_size, batch_size, num_embed, mode='train', threads=2, drop_last=True):
         print ('>> create multithread loader with {} threads ...'.format(threads))
         self.dataset = Dataset(data_dir, img_size=img_size, batch_size=batch_size, n_embed=num_embed, mode=mode)
         self.dataloader = torch.utils.data.DataLoader(
@@ -231,7 +231,7 @@ class COCODataset():
             num_workers=threads,
             drop_last=drop_last)
             
-        self._num_examples = len(self.dataset)
+        self.dataloader._num_examples = len(self.dataset)
 
     def load_data(self):
         return self.dataloader

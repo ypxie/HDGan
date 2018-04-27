@@ -13,12 +13,10 @@ from torch.nn.utils import clip_grad_norm
 from .proj_utils.plot_utils import *
 from .proj_utils.local_utils import *
 from .proj_utils.torch_utils import *
-from .HDGan import to_img_dict
+from .HDGan import to_img_dict_
 from PIL import Image, ImageDraw, ImageFont
-
+import functools
 import time, json, h5py
-
-TINY = 1e-8
 
 def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     # helper function
@@ -74,7 +72,8 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
         vis_samples = {}
         tmp_samples = {}
         init_flag = True
-        
+        to_img_dict = functools.partial(to_img_dict_, super512=args.finest_size == 512)
+
         while True:
             if start_count >= num_examples:
                 break
