@@ -53,7 +53,6 @@ def compute_d_pair_loss(real_logit, wrong_logit, fake_logit, real_labels, fake_l
         real_d_loss + (wrong_d_loss + fake_d_loss) / 2.
     return discriminator_loss
 
-
 def compute_d_img_loss(wrong_img_logit, real_img_logit, fake_img_logit, real_labels, fake_labels):
 
     criterion = nn.MSELoss()
@@ -72,26 +71,6 @@ def plot_imgs(samples, epoch, typ, name, path='', model_name=None):
     tmpX = save_images(samples, save=not path == '', save_path=os.path.join(
         path, '{}_epoch{}_{}.png'.format(name, epoch, typ)), dim_ordering='th')
     plot_img(X=tmpX, win='{}_{}.png'.format(name, typ), env=model_name)
-
-
-def load_partial_state_dict(model, state_dict):
-
-    own_state = model.state_dict()
-    for name, param in state_dict.items():
-        if name not in own_state:
-            raise KeyError('unexpected key "{}" in state_dict'
-                           .format(name))
-        if isinstance(param, Parameter):
-            # backwards compatibility for serialized parameters
-            param = param.data
-        try:
-            own_state[name].copy_(param)
-        except:
-            print('While copying the parameter named {}, whose dimensions in the model are'
-                  ' {} and whose dimensions in the checkpoint are {}, ...'.format(
-                      name, own_state[name].size(), param.size()))
-            raise
-    print('>> load partial state dict: {} initialized'.format(len(state_dict)))
 
 
 def train_gans(dataset, model_root, model_name, netG, netD, args):
@@ -139,14 +118,18 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             weights_dict = torch.load(
                 D_weightspath, map_location=lambda storage, loc: storage)
             print('reload weights from {}'.format(D_weightspath))
-            load_partial_state_dict(netD, weights_dict)
+            netD_ = netD.module if 'DataParallel' in str(type(netD)) else netD
+            netD_.load_state_dict(weights_dict)
 
             print('reload weights from {}'.format(G_weightspath))
             weights_dict = torch.load(
                 G_weightspath, map_location=lambda storage, loc: storage)
-            load_partial_state_dict(netG, weights_dict)
+            netG_ = netG.module if 'DataParallel' in str(type(netG)) else netG
+            netG_.load_state_dict(weights_dict)
 
             start_epoch = args.load_from_epoch + 1
+            d_lr /= 2 ** (start_epoch // args.epoch_decay)
+            g_lr /= 2 ** (start_epoch // args.epoch_decay) 
         else:
             raise ValueError('{} or {} do not exist'.format(
                 D_weightspath, G_weightspath))
@@ -185,6 +168,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     FAKE_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 4, 4).fill_(0)).cuda()
 
     def get_labels(logit):
+        # get discriminator labels for real and fake
         if logit.size(-1) == 1: 
             return REAL_global_LABELS.view_as(logit), FAKE_global_LABELS.view_as(logit)
         else:
@@ -261,7 +245,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             for p in netD.parameters(): p.requires_grad = False  # to avoid computation
             netG.zero_grad()
 
-            # TODO Test if we do need to sample again
+            # TODO Test if we do need to sample again in Birds and Flowers
             # z.data.normal_(0, 1)  # resample random noises
             # fake_images, kl_loss = netG(embeddings, z)
 

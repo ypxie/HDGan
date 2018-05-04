@@ -12,6 +12,8 @@ CUDA_VISIBLE_DEVICES=${device} python train_worker.py \
                                 --d_lr 0.0002 \
                                 --epoch_decay 50 \
                                 --KL_COE 2 \
+				--reuse_weights \
+				--load_from_epoch 160 \
                                 --gpus ${device} \
                                 | tee $dir/'log.txt'
 
