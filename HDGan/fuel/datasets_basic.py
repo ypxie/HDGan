@@ -42,11 +42,10 @@ class Dataset(object):
         self.get_data(os.path.join(self.workdir, mode))
 
         # set up sampler
-        self._index_in_epoch = 0
+        self._train_index = 0
         self._text_index = 0
         self._perm = np.arange(self._num_examples)
         np.random.shuffle(self._perm)
-        self._epochs_completed = -1
         self.saveIDs = np.arange(self._num_examples)
 
         print('>> Init basic data loader ', mode)
@@ -144,25 +143,28 @@ class Dataset(object):
             
             return np.squeeze(sampled_embeddings_array), sampled_captions
 
-    def __getitem__(self, idx):
+    def get_index(self):
+
+        start = self._train_index
+        self._train_index += self.batch_size
+        
+        if self._train_index > self._num_examples:
+            np.random.shuffle(self._perm)
+            start = 0
+            self._train_index = self.batch_size
+        end = self._train_index
+        
+        return start, end
+        
+    def __iter__(self):
+        return self
+
+    def __next__(self):
         """Return the next `batch_size` examples from this data set."""
 
         n_embed = self.n_embed 
-        
-        start = self._index_in_epoch
-        self._index_in_epoch += self.batch_size
         # shuffle
-        if self._index_in_epoch > self._num_examples:
-            # Finished epoch
-            self._epochs_completed += 1
-            # Shuffle the data
-            self._perm = np.arange(self._num_examples)
-            np.random.shuffle(self._perm)
-            # Start next epoch
-            start = 0
-            self._index_in_epoch = self.batch_size
-            assert self.batch_size <= self._num_examples
-        end = self._index_in_epoch
+        start, end = self.get_index()
 
         current_ids = self._perm[start:end]
         fake_ids = np.random.randint(self._num_examples, size=self.batch_size)
@@ -199,7 +201,9 @@ class Dataset(object):
                                     filenames, class_id, n_embed)
         ret_list.append(sampled_embeddings)
         ret_list.append(sampled_captions)
-   
+
+        ret_list.append(filenames)
+        
         return ret_list
 
     def next_batch_test(self, max_captions=1):

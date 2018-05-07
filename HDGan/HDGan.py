@@ -94,8 +94,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     tot_epoch = args.maxepoch
 
     ''' get train and test data sampler '''
-    train_sampler = iter(dataset[0]).next
-    test_sampler = iter(dataset[1]).next
+    train_sampler = iter(dataset[0])
+    test_sampler = iter(dataset[1])
 
     updates_per_epoch = int(dataset[0]._num_examples / args.batch_size)
 
@@ -119,20 +119,19 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 D_weightspath, map_location=lambda storage, loc: storage)
             print('reload weights from {}'.format(D_weightspath))
             netD_ = netD.module if 'DataParallel' in str(type(netD)) else netD
-            netD_.load_state_dict(weights_dict)
+            netD_.load_state_dict(weights_dict, strict=False)
 
             print('reload weights from {}'.format(G_weightspath))
             weights_dict = torch.load(
                 G_weightspath, map_location=lambda storage, loc: storage)
             netG_ = netG.module if 'DataParallel' in str(type(netG)) else netG
-            netG_.load_state_dict(weights_dict)
+            netG_.load_state_dict(weights_dict, strict=False)
 
             start_epoch = args.load_from_epoch + 1
             d_lr /= 2 ** (start_epoch // args.epoch_decay)
             g_lr /= 2 ** (start_epoch // args.epoch_decay) 
         else:
-            raise ValueError('{} or {} do not exist'.format(
-                D_weightspath, G_weightspath))
+            raise ValueError('{} or {} do not exist'.format(D_weightspath, G_weightspath))
     else:
         start_epoch = 1
 
@@ -155,7 +154,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     #--------Generator niose placeholder used for testing------------#
     z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
     z = to_device(z)
-    fixed_images, _, fixed_embeddings, _, _ = test_sampler()
+    fixed_images, _, fixed_embeddings, _, _ = next(test_sampler)
     fixed_embeddings = to_device(fixed_embeddings)
     fixed_z_data = [torch.FloatTensor(args.batch_size, args.noise_dim).normal_(
         0, 1) for _ in range(args.test_sample_num)]
@@ -186,8 +185,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             set_lr(optimizerD, d_lr)
             set_lr(optimizerG, g_lr)
 
-        train_sampler = iter(dataset[0]).next # reset
-        test_sampler = iter(dataset[1]).next
+        # reset to prevent StopIteration
+        train_sampler = iter(dataset[0]) 
+        test_sampler = iter(dataset[1])
+
         netG.train()
         netD.train()
         for it in range(updates_per_epoch):
@@ -196,10 +197,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             for _ in range(ncritic):
                 ''' Sample data '''
                 try:
-                    images, wrong_images, np_embeddings, _, _ = train_sampler.next()
+                    images, wrong_images, np_embeddings, _, _ = next(train_sampler)
                 except:
                     train_sampler = iter(dataset[0]) # reset
-                    images, wrong_images, np_embeddings, _, _ = train_sampler.next()
+                    images, wrong_images, np_embeddings, _, _ = next(train_sampler)
                     
                 embeddings = to_device(np_embeddings)
                 z.data.normal_(0, 1)
@@ -231,9 +232,9 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
 
                     discriminator_loss += (pair_loss + img_loss)
 
-                    d_plot_dict[key].plot(img_loss.cpu().data.numpy().mean())
+                    d_plot_dict[key].plot(to_numpy(img_loss).mean())
 
-                d_loss_val = discriminator_loss.cpu().data.numpy().mean()
+                d_loss_val = to_numpy(discriminator_loss).mean()
                 discriminator_loss.backward()
 
                 optimizerD.step()
@@ -252,7 +253,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             loss_val = 0
             if type(mean_var) == tuple:
                 kl_loss = get_KL_Loss(mean_var[0], mean_var[1])
-                kl_loss_val = kl_loss.cpu().data.numpy().mean()
+                kl_loss_val = to_numpy(kl_loss).mean()
                 generator_loss = args.KL_COE * kl_loss
             else:
                 # when trian 512HDGAN. KL loss is fixed.
@@ -274,10 +275,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 real_labels, _ = get_labels(fake_img_logit_local)
                 img_loss = compute_g_loss(fake_img_logit_local, real_labels)
                 generator_loss += img_loss
-                g_plot_dict[key].plot(img_loss.cpu().data.numpy().mean())
+                g_plot_dict[key].plot(to_numpy(img_loss).mean())
 
             generator_loss.backward()
-            g_loss_val = generator_loss.cpu().data.numpy().mean()
+            g_loss_val = to_numpy(generator_loss).mean()
 
             optimizerG.step()
             netG.zero_grad()
@@ -287,7 +288,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             # --- visualize train samples----
             if it % args.verbose_per_iter == 0:
                 for k, sample in fake_images.items():
-                    plot_imgs([images[k].numpy(), sample.cpu().data.numpy()],
+                    plot_imgs([to_numpy(images[k]), to_numpy(sample)],
                               epoch, k, 'train_images', model_name=model_name)
                 print('[epoch %d/%d iter %d/%d]: lr = %.6f g_loss = %.5f d_loss= %.5f' %
                       (epoch, tot_epoch, it, updates_per_epoch, g_lr, g_loss_val, d_loss_val))
@@ -300,7 +301,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             if idx_test == 0:
                 test_images, test_embeddings = fixed_images, fixed_embeddings
             else:
-                test_images, _, test_embeddings, _, _ = test_sampler()
+                test_images, _, test_embeddings, _, _ = next(test_sampler)
                 test_embeddings = to_device(test_embeddings)
                 testing_z = Variable(z.data, volatile=True)
             tmp_samples = {}
@@ -318,7 +319,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                             args.test_sample_num + 1)]
 
                 for k, v in samples.items():
-                    cpu_data = v.cpu().data.numpy()
+                    cpu_data = to_numpy(v) 
                     if t == 0:
                         if vis_samples[k][0] is None:
                             vis_samples[k][0] = test_images[k]
