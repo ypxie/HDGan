@@ -18,6 +18,7 @@ import functools
 
 
 def to_img_dict_(*inputs, super512=False):
+    
     if type(inputs[0]) == tuple:
         inputs = inputs[0]
     res = {}
@@ -38,6 +39,9 @@ def to_img_dict_(*inputs, super512=False):
     return res, loss
 
 def get_KL_Loss(mu, logvar):
+    # see Appendix B from VAE paper:
+    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+    # https://arxiv.org/abs/1312.6114
     kld = mu.pow(2).add(logvar.mul(2).exp()).add(-1).mul(0.5).add(logvar.mul(-1))
     kl_loss = torch.mean(kld)
     return kl_loss
@@ -49,8 +53,7 @@ def compute_d_pair_loss(real_logit, wrong_logit, fake_logit, real_labels, fake_l
     wrong_d_loss = criterion(wrong_logit, fake_labels)
     fake_d_loss = criterion(fake_logit, fake_labels)
 
-    discriminator_loss =\
-        real_d_loss + (wrong_d_loss + fake_d_loss) / 2.
+    discriminator_loss = real_d_loss + (wrong_d_loss+fake_d_loss) / 2.
     return discriminator_loss
 
 def compute_d_img_loss(wrong_img_logit, real_img_logit, fake_img_logit, real_labels, fake_labels):
@@ -63,11 +66,13 @@ def compute_d_img_loss(wrong_img_logit, real_img_logit, fake_img_logit, real_lab
     return fake_d_loss + (wrong_d_loss+real_d_loss) / 2
 
 def compute_g_loss(fake_logit, real_labels):
+
     criterion = nn.MSELoss()
     generator_loss = criterion(fake_logit, real_labels)
     return generator_loss
 
 def plot_imgs(samples, epoch, typ, name, path='', model_name=None):
+
     tmpX = save_images(samples, save=not path == '', save_path=os.path.join(
         path, '{}_epoch{}_{}.png'.format(name, epoch, typ)), dim_ordering='th')
     plot_img(X=tmpX, win='{}_{}.png'.format(name, typ), env=model_name)
@@ -154,6 +159,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     #--------Generator niose placeholder used for testing------------#
     z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
     z = to_device(z)
+    # generate a set of fixed test samples to visualize changes in training epoches
     fixed_images, _, fixed_embeddings, _, _ = next(test_sampler)
     fixed_embeddings = to_device(fixed_embeddings)
     fixed_z_data = [torch.FloatTensor(args.batch_size, args.noise_dim).normal_(
@@ -174,6 +180,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
             return REAL_local_LABELS.view_as(logit), FAKE_local_LABELS.view_as(logit)
 
     to_img_dict = functools.partial(to_img_dict_, super512=args.finest_size == 512)
+    
     #--------Start training------------#
     for epoch in range(start_epoch, tot_epoch):
         start_timer = time.time()
@@ -202,14 +209,16 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                     train_sampler = iter(dataset[0]) # reset
                     images, wrong_images, np_embeddings, _, _ = next(train_sampler)
                     
-                embeddings = to_device(np_embeddings)
+                embeddings = to_device(np_embeddings, requires_grad=False)
                 z.data.normal_(0, 1)
 
                 ''' update D '''
                 for p in netD.parameters(): p.requires_grad = True
                 netD.zero_grad()
 
-                fake_images, mean_var = to_img_dict(netG(embeddings, z))
+                g_emb = Variable(embeddings.data, volatile=True)
+                g_z = Variable(z.data , volatile=True)
+                fake_images, mean_var = to_img_dict(netG(g_emb, g_z))
 
                 discriminator_loss = 0
                 ''' iterate over image of different sizes.'''
@@ -234,12 +243,10 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
 
                     d_plot_dict[key].plot(to_numpy(img_loss).mean())
 
-                d_loss_val = to_numpy(discriminator_loss).mean()
                 discriminator_loss.backward()
-
                 optimizerD.step()
                 netD.zero_grad()
-
+                d_loss_val = to_numpy(discriminator_loss).mean()
                 d_loss_plot.plot(d_loss_val)
 
             ''' update G '''
@@ -256,8 +263,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 kl_loss_val = to_numpy(kl_loss).mean()
                 generator_loss = args.KL_COE * kl_loss
             else:
-                # when trian 512HDGAN. KL loss is fixed.
-                # Here we optimize pixel-wise l1 loss
+                # when trian 512HDGAN. KL loss is fixed since we assume 256HDGAN is trained.
+                # mean_var actually returns pixel-wise l1 loss (see paper)
                 generator_loss = mean_var
 
             kl_loss_plot.plot(kl_loss_val)
@@ -278,10 +285,9 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 g_plot_dict[key].plot(to_numpy(img_loss).mean())
 
             generator_loss.backward()
-            g_loss_val = to_numpy(generator_loss).mean()
-
             optimizerG.step()
             netG.zero_grad()
+            g_loss_val = to_numpy(generator_loss).mean()
             g_loss_plot.plot(g_loss_val)
             lr_plot.plot(g_lr)
 
@@ -302,7 +308,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 test_images, test_embeddings = fixed_images, fixed_embeddings
             else:
                 test_images, _, test_embeddings, _, _ = next(test_sampler)
-                test_embeddings = to_device(test_embeddings)
+                test_embeddings = to_device(test_embeddings, volatile=True)
                 testing_z = Variable(z.data, volatile=True)
             tmp_samples = {}
             for t in range(args.test_sample_num):
@@ -324,14 +330,12 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                         if vis_samples[k][0] is None:
                             vis_samples[k][0] = test_images[k]
                         else:
-                            vis_samples[k][0] = np.concatenate(
-                                [vis_samples[k][0], test_images[k]], 0)
+                            vis_samples[k][0] = np.concatenate([vis_samples[k][0], test_images[k]], 0)
 
                     if vis_samples[k][t+1] is None:
                         vis_samples[k][t+1] = cpu_data
                     else:
-                        vis_samples[k][t+1] = np.concatenate(
-                            [vis_samples[k][t+1], cpu_data], 0)
+                        vis_samples[k][t+1] = np.concatenate([vis_samples[k][t+1], cpu_data], 0)
 
         end_timer = time.time() - start_timer
         # visualize testing samples

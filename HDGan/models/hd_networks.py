@@ -357,8 +357,7 @@ class Discriminator(torch.nn.Module):
         '''
         out_dict = OrderedDict()
         this_img_size = images.size()[3]
-        assert this_img_size in [
-            32, 64, 128, 256], 'wrong input size {} in image discriminator'.format(this_img_size)
+        assert this_img_size in [32, 64, 128, 256], 'wrong input size {} in image discriminator'.format(this_img_size)
 
         img_encoder = getattr(self, 'img_encoder_{}'.format(this_img_size))
         local_img_disc = getattr(

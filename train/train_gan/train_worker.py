@@ -105,5 +105,4 @@ if __name__ == '__main__':
     model_name = '{}_{}'.format(args.model_name, data_name)
 
     print('>> Start training ...')
-    train_gans((dataset_train, dataset_test),
-               model_root, model_name, netG, netD, args)
+    train_gans((dataset_train, dataset_test), model_root, model_name, netG, netD, args)

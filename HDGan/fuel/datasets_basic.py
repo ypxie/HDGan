@@ -148,11 +148,10 @@ class Dataset(object):
         start = self._train_index
         self._train_index += self.batch_size
         
-        if self._train_index > self._num_examples:
+        if (self._train_index+self.batch_size) > self._num_examples:
             np.random.shuffle(self._perm)
             start = 0
-            self._train_index = self.batch_size
-        end = self._train_index
+        end = start + self.batch_size
         
         return start, end
         
