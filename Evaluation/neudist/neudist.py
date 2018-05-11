@@ -3,7 +3,9 @@
 import os
 import sys, os
 sys.path.insert(0, os.path.join('..'))
-
+proj_root = os.path.join('..', '..')
+data_root = os.path.join(proj_root, 'Data')
+model_root = os.path.join(proj_root, 'Models')
 import argparse
 import torch, h5py
 import numpy as np

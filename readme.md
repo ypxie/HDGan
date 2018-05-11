@@ -41,7 +41,7 @@ To use multiple GPUs, simply set device='0,1,..' as a set of gpu ids.
 - `sh test_coco.sh` for coco
 
 ## Evaluation
-We provide multiple evaluation metrics to ease test. Evaluation needs the sampled results obtained in Testing and saved in ./Results.
+We provide multiple evaluation tools to ease test. Evaluation needs the sampled results obtained in Testing and saved in ./Results.
 - Go to /Evaluation
 - Download [inception models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to compute inception scores.
 - Compute the inception score: `sh compute_inception_score.sh`
@@ -55,9 +55,10 @@ We provide pretrained models for birds, flowers, and coco.
 - It contains HDGAN for birds and flowers, visual similarity model for birds and flowers
 
 
-## Acknowlegement
-- StakGAN [tensorflow implementation](https://github.com/hanzhanggit/StackGAN)
+## Acknowlegements
+- StakGAN [Tensorflow implementation](https://github.com/hanzhanggit/StackGAN)
 - MS-SSIM [Python implementation](https://github.com/tensorflow/models/blob/master/research/compression/image_encoder/msssim.py)
+- Inception score [Tensorfow implementation](https://github.com/awslabs/deeplearning-benchmark/tree/master/tensorflow/inception)
 - Process COCO data [Torch implementation](https://github.com/reedscot/icml2016)
 
 
