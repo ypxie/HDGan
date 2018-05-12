@@ -53,9 +53,9 @@ if  __name__ == '__main__':
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
             
-    model_name = args.model_name   #'{}_{}_{}'.format(args.model_name, data_name, args.imsize)
-    
-    test_nd(args.testing_path, model_root, model_name, img_encoder, vs_model, args)
+    weight_root = os.path.join('neudist/', args.model_name)
+
+    test_nd(args.testing_path, weight_root, img_encoder, vs_model, args)
 
     
     

@@ -15,6 +15,7 @@ Visual results (Left: compared against StackGAN; Right: multi-resolution generat
 - Python 3
 - Pytorch 0.3.1
 - Anaconda 3.6
+- Tensorflow 1.4.1 (for evaluation only)
 
 ## Data
 Download preprocessed data in /Data.
@@ -43,9 +44,16 @@ To use multiple GPUs, simply set device='0,1,..' as a set of gpu ids.
 ## Evaluation
 We provide multiple evaluation tools to ease test. Evaluation needs the sampled results obtained in Testing and saved in ./Results.
 - Go to /Evaluation
+
+Inception score
 - Download [inception models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to compute inception scores.
 - Compute the inception score: `sh compute_inception_score.sh`
+
+MS-SSIM
 - Compute the MS-SSIM score: `sh compute_ms_ssim.sh`
+
+VS-Similarity
+- Download [models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to Evaluation/neudist/neudist_[dataset]folder.
 - Evaluate the VS-smilarity score: `sh compute_neudist_score.sh` 
 
 

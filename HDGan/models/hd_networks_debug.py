@@ -59,8 +59,8 @@ class ImageDown(torch.nn.Module):
 
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
         activ = nn.LeakyReLU(0.2, True)
-        _layers = []
 
+        _layers = []
         # use large kernel_size at the end to prevent using zero-padding and stride
         if input_size == 64:
             cur_dim = 128
@@ -78,13 +78,12 @@ class ImageDown(torch.nn.Module):
             _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
 
         if input_size == 256:
-            cur_dim = 16 # for testing
-            _layers += [conv_norm(num_chan, cur_dim, norm_layer, stride=2, activation=activ, use_norm=False)] # 256
-            _layers += [conv_norm(cur_dim, cur_dim*2,  norm_layer, stride=2, activation=activ)] # 128
-            _layers += [conv_norm(cur_dim*2, cur_dim*4,  norm_layer, stride=2, activation=activ)] # 64
-            _layers += [conv_norm(cur_dim*4, cur_dim*8,  norm_layer, stride=2, activation=activ)] # 32
-            _layers += [conv_norm(cur_dim*8, cur_dim*16,  norm_layer, stride=2, activation=activ)] # 16
-            _layers += [conv_norm(cur_dim*16, out_dim,  norm_layer, stride=2, activation=activ)] # 8
+            cur_dim = 32 # for testing
+            _layers += [conv_norm(num_chan, cur_dim, norm_layer, stride=2, activation=activ, use_norm=False)] # 128
+            _layers += [conv_norm(cur_dim, cur_dim*2,  norm_layer, stride=2, activation=activ)] # 64
+            _layers += [conv_norm(cur_dim*2, cur_dim*4,  norm_layer, stride=2, activation=activ)] # 32
+            _layers += [conv_norm(cur_dim*4, cur_dim*8,  norm_layer, stride=2, activation=activ)] # 16
+            _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer, stride=2, activation=activ)] # 8
 
         self.node = nn.Sequential(*_layers)
 
@@ -317,7 +316,7 @@ class Discriminator(torch.nn.Module):
             self.pair_disc_256 = DiscClassifier(enc_dim, emb_dim, kernel_size=4)
             self.pre_encode = conv_norm(enc_dim, enc_dim, norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)
             
-            self.local_img_disc_256 = nn.Conv2d(enc_dim, 1, kernel_size=1, padding=0, bias=True)
+            self.local_img_disc_256 = nn.Conv2d(enc_dim, 1, kernel_size=4, padding=0, bias=True)
             # map sentence to a code of length emb_dim
             _layers = [nn.Linear(sent_dim, emb_dim), activ]
             self.context_emb_pipe_256 = nn.Sequential(*_layers)
@@ -355,10 +354,11 @@ class Discriminator(torch.nn.Module):
         img_code = img_encoder(images)
 
         if this_img_size == 256:
-            pair_disc_out = pair_disc(sent_code, self.pre_encode(img_code))
+            pre_img_code = self.pre_encode(img_code)
+            pair_disc_out = pair_disc(sent_code, pre_img_code)
         else:
             pair_disc_out = pair_disc(sent_code, img_code)
-            
+
         local_img_disc_out = local_img_disc(img_code)
 
         return pair_disc_out, local_img_disc_out

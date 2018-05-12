@@ -1,5 +1,5 @@
 
-name='HDGAN_256_v2'
+name='HDGAN_256'
 dataset='coco'
 gpus=${gpus}
 dir='../../Models/'${name}_$dataset

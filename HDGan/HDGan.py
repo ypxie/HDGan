@@ -169,8 +169,8 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
     # create discrimnator label placeholder (not a good way)
     REAL_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(1)).cuda()
     FAKE_global_LABELS = Variable(torch.FloatTensor(args.batch_size, 1).fill_(0)).cuda()
-    REAL_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 4, 4).fill_(1)).cuda()
-    FAKE_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 4, 4).fill_(0)).cuda()
+    REAL_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 5, 5).fill_(1)).cuda()
+    FAKE_local_LABELS = Variable(torch.FloatTensor(args.batch_size, 1, 5, 5).fill_(0)).cuda()
 
     def get_labels(logit):
         # get discriminator labels for real and fake
@@ -216,9 +216,7 @@ def train_gans(dataset, model_root, model_name, netG, netD, args):
                 for p in netD.parameters(): p.requires_grad = True
                 netD.zero_grad()
 
-                g_emb = Variable(embeddings.data, volatile=True)
-                g_z = Variable(z.data , volatile=True)
-                fake_images, mean_var = to_img_dict(netG(g_emb, g_z))
+                fake_images, mean_var = to_img_dict(netG(embeddings, z))
 
                 discriminator_loss = 0
                 ''' iterate over image of different sizes.'''

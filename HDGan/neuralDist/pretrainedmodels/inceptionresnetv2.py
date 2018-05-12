@@ -332,7 +332,8 @@ def inceptionresnetv2(num_classes=1001, pretrained='imagenet'):
 
         # both 'imagenet'&'imagenet+background' are loaded from same parameters
         model = InceptionResNetV2(num_classes=1001)
-        model.load_state_dict(model_zoo.load_url(settings['url']))
+        # TODO zizhao: not sure why can not load the last linear model. But it is not used in here
+        model.load_state_dict(model_zoo.load_url(settings['url']), strict=False)
         
         if pretrained == 'imagenet':
             new_classif = nn.Linear(1536, 1000)
