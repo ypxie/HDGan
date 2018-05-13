@@ -1,7 +1,6 @@
 
 name='HDGAN_256'
 dataset='coco'
-gpus=${gpus}
 dir='../../Models/'${name}_$dataset
 mkdir -v $dir
 CUDA_VISIBLE_DEVICES=${device} python train_worker.py \

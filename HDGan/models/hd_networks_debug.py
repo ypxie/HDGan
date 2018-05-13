@@ -315,7 +315,7 @@ class Discriminator(torch.nn.Module):
             self.img_encoder_256 = ImageDown(256, num_chan, enc_dim)     # 8x8
             self.pair_disc_256 = DiscClassifier(enc_dim, emb_dim, kernel_size=4)
             self.pre_encode = conv_norm(enc_dim, enc_dim, norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)
-            
+            # never use 1x1 convolutions as the image disc classifier
             self.local_img_disc_256 = nn.Conv2d(enc_dim, 1, kernel_size=4, padding=0, bias=True)
             # map sentence to a code of length emb_dim
             _layers = [nn.Linear(sent_dim, emb_dim), activ]
@@ -367,7 +367,7 @@ class Discriminator(torch.nn.Module):
 
 class GeneratorSuperL1Loss(nn.Module):
     # for 512 resolution
-    def __init__(self, sent_dim, noise_dim, emb_dim, hid_dim, num_resblock=2):
+    def __init__(self, sent_dim, noise_dim, emb_dim, hid_dim, G256_weightspath='', num_resblock=2):
 
         super(GeneratorSuperL1Loss, self).__init__()
         self.__dict__.update(locals())
@@ -377,6 +377,10 @@ class GeneratorSuperL1Loss(nn.Module):
         act_layer = nn.ReLU(True)
         
         self.generator_256 = Generator(sent_dim, noise_dim, emb_dim, hid_dim)
+        if G256_weightspath != '':
+            print ('pre-load generator_256 from', G256_weightspath)
+            weights_dict = torch.load(G256_weightspath, map_location=lambda storage, loc: storage)
+            self.generator_256.load_state_dict(weights_dict)
 
         # puch it to every high dimension
         scale = 512
@@ -400,7 +404,7 @@ class GeneratorSuperL1Loss(nn.Module):
         partial_params = list(set(all_params) - set(fixed))
 
         print ('WARNING: fixed params {} training params {}'.format(len(fixed), len(partial_params)))
-        print('          It is not working if you can train all from scratch')
+        print('          It needs modifications if you can train all from scratch')
         
         return partial_params
 

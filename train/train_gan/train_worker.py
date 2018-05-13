@@ -24,7 +24,7 @@ from HDGan.fuel.datasets import Dataset
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Gans')
 
-    parser.add_argument('--reuse_weights',    action='store_true',
+    parser.add_argument('--reuse_weights',   action='store_true',
                         default=False, help='continue from last checkout point')
     parser.add_argument('--load_from_epoch', type=int,
                         default=0,  help='load from epoch')
@@ -44,7 +44,7 @@ if __name__ == '__main__':
                         help='decay learning rate by half every epoch_decay')
     parser.add_argument('--finest_size', type=int, default=256,
                         metavar='N', help='target image size.')
-
+    parser.add_argument('--init_256generator_from', type=str,  default='')
     parser.add_argument('--maxepoch', type=int, default=600, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--g_lr', type=float, default=0.0002, metavar='LR',
@@ -77,7 +77,12 @@ if __name__ == '__main__':
     print(args)
     
     # Generator
-    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)
+    if args.finest_size <= 256:
+        netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)      
+    else:
+        assert args.init_256generator_from != '', '256 generator need to be intialized'
+        from HDGan.models.hd_networks import GeneratorSuperL1Loss
+        netG = GeneratorSuperL1Loss(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=2, G256_weightspath=args.init_256generator_from)
     # Discriminator
     netD = Discriminator(num_chan=3, hid_dim=128, sent_dim=1024, emb_dim=128)
 
