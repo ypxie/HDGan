@@ -65,7 +65,7 @@ def get_inception_score(sess, images, pred_op):
             img = preprocess(img)
             inp.append(img)
         if i % 50 == 0:
-            print("%d of %d batches" % (i, n_batches)),
+            print("%d of %d batches" % (i, n_batches), flush=True),
         sys.stdout.flush()
         # inp = inps[(i * bs):min((i + 1) * bs, len(inps))]
         inp = np.concatenate(inp, 0)

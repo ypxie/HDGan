@@ -82,7 +82,7 @@ def get_inception_score(images, splits=10):
         pred = sess.run(softmax, {'ExpandDims:0': inp})
         preds.append(pred)
         if i % 50 == 0:
-            print("%d of %d batches" % (i, n_batches)),
+            print("%d of %d batches" % (i, n_batches), flush=True),
     preds = np.concatenate(preds, 0)
     scores = []
     for i in range(splits):

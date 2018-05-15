@@ -14,3 +14,4 @@ CUDA_VISIBLE_DEVICES=${device} python train_worker.py \
                                 --gpus ${device} \
                                 | tee $dir/'log.txt'
 
+# need about 200 epochs
