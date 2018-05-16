@@ -59,48 +59,31 @@ class ImageDown(torch.nn.Module):
 
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
         activ = nn.LeakyReLU(0.2, True)
-        _layers = []
 
+        _layers = []
         # use large kernel_size at the end to prevent using zero-padding and stride
         if input_size == 64:
             cur_dim = 128
-            _layers += [conv_norm(num_chan, cur_dim, norm_layer,
-                                  stride=2, activation=activ, use_norm=False)]  # 32
-            _layers += [conv_norm(cur_dim, cur_dim*2,
-                                  norm_layer, stride=2, activation=activ)]  # 16
-            _layers += [conv_norm(cur_dim*2, cur_dim*4,
-                                  norm_layer, stride=2, activation=activ)]  # 8
-            _layers += [conv_norm(cur_dim*4, out_dim,  norm_layer,
-                                  stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
+            _layers += [conv_norm(num_chan, cur_dim, norm_layer, stride=2, activation=activ, use_norm=False)]  # 32
+            _layers += [conv_norm(cur_dim, cur_dim*2, norm_layer, stride=2, activation=activ)]  # 16
+            _layers += [conv_norm(cur_dim*2, cur_dim*4, norm_layer, stride=2, activation=activ)]  # 8
+            _layers += [conv_norm(cur_dim*4, out_dim,  norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
 
         if input_size == 128:
             cur_dim = 64
-            _layers += [conv_norm(num_chan, cur_dim, norm_layer,
-                                  stride=2, activation=activ, use_norm=False)]  # 64
-            _layers += [conv_norm(cur_dim, cur_dim*2,
-                                  norm_layer, stride=2, activation=activ)]  # 32
-            _layers += [conv_norm(cur_dim*2, cur_dim*4,
-                                  norm_layer, stride=2, activation=activ)]  # 16
-            _layers += [conv_norm(cur_dim*4, cur_dim*8,
-                                  norm_layer, stride=2, activation=activ)]  # 8
-            _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer,
-                                  stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
+            _layers += [conv_norm(num_chan, cur_dim, norm_layer, stride=2, activation=activ, use_norm=False)]  # 64
+            _layers += [conv_norm(cur_dim, cur_dim*2, norm_layer, stride=2, activation=activ)]  # 32
+            _layers += [conv_norm(cur_dim*2, cur_dim*4, norm_layer, stride=2, activation=activ)]  # 16
+            _layers += [conv_norm(cur_dim*4, cur_dim*8, norm_layer, stride=2, activation=activ)]  # 8
+            _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
 
         if input_size == 256:
-            cur_dim = 32
-            _layers += [conv_norm(num_chan, cur_dim, norm_layer,
-                                  stride=2, activation=activ, use_norm=False)]  # 128
-            _layers += [conv_norm(cur_dim, cur_dim*2,
-                                  norm_layer, stride=2, activation=activ)]  # 64
-            _layers += [conv_norm(cur_dim*2, cur_dim*4,
-                                  norm_layer, stride=2, activation=activ)]  # 32
-            _layers += [conv_norm(cur_dim*4, cur_dim*8,
-                                  norm_layer, stride=2, activation=activ)]  # 16
-            _layers += [conv_norm(cur_dim*8, cur_dim*8,
-                                  norm_layer, stride=2, activation=activ)]  # 8
-
-            _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer,
-                                  stride=1, activation=activ, kernel_size=5, padding=0)]  # 4
+            cur_dim = 32 # for testing
+            _layers += [conv_norm(num_chan, cur_dim, norm_layer, stride=2, activation=activ, use_norm=False)] # 128
+            _layers += [conv_norm(cur_dim, cur_dim*2,  norm_layer, stride=2, activation=activ)] # 64
+            _layers += [conv_norm(cur_dim*2, cur_dim*4,  norm_layer, stride=2, activation=activ)] # 32
+            _layers += [conv_norm(cur_dim*4, cur_dim*8,  norm_layer, stride=2, activation=activ)] # 16
+            _layers += [conv_norm(cur_dim*8, out_dim,  norm_layer, stride=2, activation=activ)] # 8
 
         self.node = nn.Sequential(*_layers)
 
@@ -330,9 +313,10 @@ class Discriminator(torch.nn.Module):
 
         if 256 in side_output_at:  # discriminator for 256 input
             self.img_encoder_256 = ImageDown(256, num_chan, enc_dim)     # 8x8
-            self.pair_disc_256 = DiscClassifier(
-                enc_dim, emb_dim, kernel_size=4)
-            self.local_img_disc_256 = nn.Conv2d(enc_dim, 1, kernel_size=1, padding=0, bias=True)
+            self.pair_disc_256 = DiscClassifier(enc_dim, emb_dim, kernel_size=4)
+            self.pre_encode = conv_norm(enc_dim, enc_dim, norm_layer, stride=1, activation=activ, kernel_size=5, padding=0)
+            # never use 1x1 convolutions as the image disc classifier
+            self.local_img_disc_256 = nn.Conv2d(enc_dim, 1, kernel_size=4, padding=0, bias=True)
             # map sentence to a code of length emb_dim
             _layers = [nn.Linear(sent_dim, emb_dim), activ]
             self.context_emb_pipe_256 = nn.Sequential(*_layers)
@@ -369,7 +353,11 @@ class Discriminator(torch.nn.Module):
         sent_code = context_emb_pipe(embedding)
         img_code = img_encoder(images)
 
-        pair_disc_out = pair_disc(sent_code, img_code)
+        if this_img_size == 256:
+            pre_img_code = self.pre_encode(img_code)
+            pair_disc_out = pair_disc(sent_code, pre_img_code)
+        else:
+            pair_disc_out = pair_disc(sent_code, img_code)
 
         local_img_disc_out = local_img_disc(img_code)
 
@@ -379,7 +367,7 @@ class Discriminator(torch.nn.Module):
 
 class GeneratorSuperL1Loss(nn.Module):
     # for 512 resolution
-    def __init__(self, sent_dim, noise_dim, emb_dim, hid_dim, num_resblock=2):
+    def __init__(self, sent_dim, noise_dim, emb_dim, hid_dim, G256_weightspath='', num_resblock=2):
 
         super(GeneratorSuperL1Loss, self).__init__()
         self.__dict__.update(locals())
@@ -389,6 +377,10 @@ class GeneratorSuperL1Loss(nn.Module):
         act_layer = nn.ReLU(True)
         
         self.generator_256 = Generator(sent_dim, noise_dim, emb_dim, hid_dim)
+        if G256_weightspath != '':
+            print ('pre-load generator_256 from', G256_weightspath)
+            weights_dict = torch.load(G256_weightspath, map_location=lambda storage, loc: storage)
+            self.generator_256.load_state_dict(weights_dict)
 
         # puch it to every high dimension
         scale = 512
@@ -412,7 +404,7 @@ class GeneratorSuperL1Loss(nn.Module):
         partial_params = list(set(all_params) - set(fixed))
 
         print ('WARNING: fixed params {} training params {}'.format(len(fixed), len(partial_params)))
-        print('          It is not working if you can train all from scratch')
+        print('          It needs modifications if you can train all from scratch')
         
         return partial_params
 

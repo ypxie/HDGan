@@ -14,8 +14,8 @@ model_root = os.path.join(proj_root, 'Models')
 import torch.nn as nn
 from collections import OrderedDict
 
-from HDGan.models.hd_networks import Generator
-from HDGan.models.hd_networks import Discriminator
+from HDGan.models.hd_networks_debug import Generator
+from HDGan.models.hd_networks_debug import Discriminator
 
 from HDGan.HDGan import train_gans
 from HDGan.fuel.datasets import Dataset
@@ -24,7 +24,7 @@ from HDGan.fuel.datasets import Dataset
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Gans')
 
-    parser.add_argument('--reuse_weights',    action='store_true',
+    parser.add_argument('--reuse_weights',   action='store_true',
                         default=False, help='continue from last checkout point')
     parser.add_argument('--load_from_epoch', type=int,
                         default=0,  help='load from epoch')
@@ -44,14 +44,14 @@ if __name__ == '__main__':
                         help='decay learning rate by half every epoch_decay')
     parser.add_argument('--finest_size', type=int, default=256,
                         metavar='N', help='target image size.')
-
+    parser.add_argument('--init_256generator_from', type=str,  default='')
     parser.add_argument('--maxepoch', type=int, default=600, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--g_lr', type=float, default=0.0002, metavar='LR',
                         help='learning rate (default: 0.01)')
     parser.add_argument('--d_lr', type=float, default=0.0002, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--save_freq', type=int, default=3, metavar='N',
+    parser.add_argument('--save_freq', type=int, default=5, metavar='N',
                         help='how frequent to save the model')
     parser.add_argument('--display_freq', type=int, default=200, metavar='N',
                         help='plot the results every {} batches')
@@ -69,33 +69,45 @@ if __name__ == '__main__':
                         help='kl divergency coefficient.')
     parser.add_argument('--visdom_port', type=int, default=8097,
                         help='The port should be the same with the port when launching visdom')
-
+    parser.add_argument('--gpus', type=str, default='0', 
+                        help='which gpu')
     # add more
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available()
     print(args)
-
+    
     # Generator
-    netG = Generator(sent_dim=1024, noise_dim=args.noise_dim,
-                     emb_dim=128, hid_dim=128, num_resblock=1)
+    if args.finest_size <= 256:
+        netG = Generator(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=1)      
+    else:
+        assert args.init_256generator_from != '', '256 generator need to be intialized'
+        from HDGan.models.hd_networks import GeneratorSuperL1Loss
+        netG = GeneratorSuperL1Loss(sent_dim=1024, noise_dim=args.noise_dim, emb_dim=128, hid_dim=128, num_resblock=2, G256_weightspath=args.init_256generator_from)
     # Discriminator
     netD = Discriminator(num_chan=3, hid_dim=128, sent_dim=1024, emb_dim=128)
 
+    gpus = [a for a in range(len(args.gpus.split(',')))]
+    torch.cuda.set_device(gpus[0])
+    args.batch_size = args.batch_size * len(gpus)
     if args.cuda:
-        netD = netD.cuda(args.device_id)
-        netG = netG.cuda(args.device_id)
+        print ('>> Parallel models in {} GPUS'.format(gpus))
+        netD = nn.parallel.DataParallel(netD, device_ids=range(len(gpus)))
+        netG = nn.parallel.DataParallel(netG, device_ids=range(len(gpus)))
+
+        netD = netD.cuda()
+        netG = netG.cuda()
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
 
     data_name = args.dataset
     datadir = os.path.join(data_root, data_name)
+
     dataset_train = Dataset(datadir, img_size=args.finest_size,
                             batch_size=args.batch_size, n_embed=args.num_emb, mode='train')
     dataset_test = Dataset(datadir, img_size=args.finest_size,
-                           batch_size=args.batch_size, n_embed=args.num_emb, mode='test')
+                           batch_size=args.batch_size, n_embed=1, mode='test')
 
     model_name = '{}_{}'.format(args.model_name, data_name)
 
-    print('>> START training ')
-    train_gans((dataset_train, dataset_test),
-               model_root, model_name, netG, netD, args)
+    print('>> Start training ...')
+    train_gans((dataset_train, dataset_test), model_root, model_name, netG, netD, args)

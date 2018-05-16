@@ -13,12 +13,10 @@ from torch.nn.utils import clip_grad_norm
 from .proj_utils.plot_utils import *
 from .proj_utils.local_utils import *
 from .proj_utils.torch_utils import *
-
+from .HDGan import to_img_dict_
 from PIL import Image, ImageDraw, ImageFont
-
+import functools
 import time, json, h5py
-
-TINY = 1e-8
 
 def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     # helper function
@@ -41,10 +39,14 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     print('reload weights from {}'.format(G_weightspath))
     weights_dict = torch.load(G_weightspath, map_location=lambda storage, loc: storage)
     #load_partial_state_dict(netG, weights_dict)
-    netG.load_state_dict(weights_dict)
+    sample_weight_name = [a for a in weights_dict.keys()][0]
+    if 'module' in sample_weight_name: # if the saved model is wrapped by DataParallel. 
+        netG = nn.parallel.DataParallel(netG, device_ids=[0])
+    ## TODO note that strict is set to false for now. It is a bit risky
+    netG.load_state_dict(weights_dict, strict=False)
 
     testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
-    testing_z = to_device(testing_z, netG.device_id, volatile=True)
+    testing_z = to_device(testing_z)
 
     num_examples = dataset._num_examples
     total_number = num_examples * args.test_sample_num
@@ -70,11 +72,12 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
         vis_samples = {}
         tmp_samples = {}
         init_flag = True
-        
+        to_img_dict = functools.partial(to_img_dict_, super512=args.finest_size == 512)
+
         while True:
             if start_count >= num_examples:
                 break
-            test_images, test_embeddings_list, saveIDs, classIDs, test_captions = test_sampler()
+            test_images, test_embeddings_list, test_captions, saveIDs, classIDs = test_sampler()
             
             this_batch_size =  test_images.shape[0]
             chosen_captions = []
@@ -97,8 +100,8 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
                 testing_z.data.normal_(0, 1)
 
                 this_test_embeddings_np = test_embeddings_list[ridx]
-                this_test_embeddings    = to_device(this_test_embeddings_np, netG.device_id, volatile=True)
-                test_outputs, _         = netG(this_test_embeddings, testing_z[0:this_batch_size])
+                this_test_embeddings    = to_device(this_test_embeddings_np)
+                test_outputs, _         = to_img_dict(netG(this_test_embeddings, testing_z[0:this_batch_size]))
                 
                 if  t == 0: 
                     if init_flag is True:
@@ -153,7 +156,6 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
 #-----------------------------------------------------------------------------------------------#
 #  drawCaption and save_super_images is modified from https://github.com/hanzhanggit/StackGAN   #
 #-----------------------------------------------------------------------------------------------#
-
 def drawCaption(img, caption, level=['output 64', 'output 128', 'output 256']):
     img_txt = Image.fromarray(img)
     # get a font

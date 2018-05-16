@@ -9,7 +9,7 @@ __all__ = ['InceptionResNetV2', 'inceptionresnetv2']
 pretrained_settings = {
     'inceptionresnetv2': {
         'imagenet': {
-            'url': 'http://webia.lip6.fr/~cadene/Downloads/inceptionresnetv2-d579a627.pth',
+            'url': 'http://data.lip6.fr/cadene/pretrainedmodels/inceptionresnetv2-520b38e4.pth',
             'input_space': 'RGB',
             'input_size': [3, 299, 299],
             'input_range': [0, 1],
@@ -18,7 +18,7 @@ pretrained_settings = {
             'num_classes': 1000
         },
         'imagenet+background': {
-            'url': 'http://webia.lip6.fr/~cadene/Downloads/inceptionresnetv2-d579a627.pth',
+            'url': 'http://data.lip6.fr/cadene/pretrainedmodels/inceptionresnetv2-520b38e4.pth',
             'input_space': 'RGB',
             'input_size': [3, 299, 299],
             'input_range': [0, 1],
@@ -332,7 +332,8 @@ def inceptionresnetv2(num_classes=1001, pretrained='imagenet'):
 
         # both 'imagenet'&'imagenet+background' are loaded from same parameters
         model = InceptionResNetV2(num_classes=1001)
-        model.load_state_dict(model_zoo.load_url(settings['url']))
+        # TODO zizhao: not sure why can not load the last linear model. But it is not used in here
+        model.load_state_dict(model_zoo.load_url(settings['url']), strict=False)
         
         if pretrained == 'imagenet':
             new_classif = nn.Linear(1536, 1000)

@@ -3,7 +3,9 @@
 import os
 import sys, os
 sys.path.insert(0, os.path.join('..'))
-
+proj_root = os.path.join('..', '..')
+data_root = os.path.join(proj_root, 'Data')
+model_root = os.path.join(proj_root, 'Models')
 import argparse
 import torch, h5py
 import numpy as np
@@ -51,9 +53,9 @@ if  __name__ == '__main__':
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
             
-    model_name = args.model_name   #'{}_{}_{}'.format(args.model_name, data_name, args.imsize)
-    
-    test_nd(args.testing_path, model_root, model_name, img_encoder, vs_model, args)
+    weight_root = os.path.join('neudist/', args.model_name)
+
+    test_nd(args.testing_path, weight_root, img_encoder, vs_model, args)
 
     
     

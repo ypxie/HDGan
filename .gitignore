@@ -4,9 +4,15 @@
 *.pth
 __pycache__
 HDGAN/__pycache__
-Evaluation/inception_score/inception_finetuned_models/*
+Evaluation/inception_score/inception_finetuned_models
 Evaluation/inception_score/inception/__pycache__
+HDGan/proj_utils/__pycache__
+HDGan/neuralDist/__pycache__
+HDGan/models/__pycache__
+HDGan/fuel/__pycache__
+HDGan/__pycache__
 Models/*
+Models_local/*
 Data/*
 Results/*
 *.swp

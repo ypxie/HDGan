@@ -166,10 +166,8 @@ def MultiScaleSSIM(img1, img2, max_val=255, filter_size=11, filter_sigma=1.5,
     return (np.prod(mcs[0:levels - 1] ** weights[0:levels - 1]) *
             (mssim[levels - 1] ** weights[levels - 1]))
 
-def load_data_from_h5(fullpath, target_resolution=256):
+def load_data_from_h5(h5file, target_resolution=256):
 
-    # import pdb; pdb.set_trace()
-    h5file = os.path.join(fullpath,)
     print ('read h5 from {}'.format(h5file))
     labels = h5py.File(h5file)['classIDs']
     label_keys = list(set(labels))
@@ -178,7 +176,7 @@ def load_data_from_h5(fullpath, target_resolution=256):
     
     images = {l:[] for l in label_keys}
     tot = 0
-    print ('Found totall {} images '.format(data.shape[0]))
+    print ('Found totall {0} {1}x{1} images '.format(data.shape[0], target_resolution))
     for i in range(data.shape[0]):
         img = data[i]
         # import pdb; pdb.set_trace()
@@ -212,14 +210,13 @@ def evalute(data, sample):
                 ssim = MultiScaleSSIM(ldata[i][np.newaxis,:,:,:], ldata[j][np.newaxis,:,:,:])
                 if not np.isnan(ssim):
                     score.append(ssim)
-        sys.stdout.write('{}-{}-{}, '.format(lab, len(score), score[-1]))
+        sys.stdout.write('{}-{}, '.format(lab, np.mean(score)))
         sys.stdout.flush()
         sys.stdout.write(".")
         sys.stdout.flush()
         res[str(lab)] = float(np.mean(score))
         
     return res
-
 
 if __name__ == "__main__":
 
@@ -235,15 +232,16 @@ if __name__ == "__main__":
     model_name = os.path.splitext(args.h5_file)[0]
     data = load_data_from_h5(h5_target_path)
 
-    print ('evaluate class-wise MS-SSMI score ...')
-    res_clswise = evalute(data, sample=args.sample_per_cls)
-
     ''' Evaluate overall MS-SSMI score. It could be useful to compare with general GANs for image quality '''
+    res_overall, res_clswise = '[None]', '[None]'
     if args.evaluate_overall_score:  
-        print ('evaluate overall MS-SSMI score ...')
+        print ('evaluate overall MS-SSMI score (format "label-mean_score") ...')
         data_noclass = {0: []}
         for v in data.values(): data_noclass[0] += v
         res_overall = evalute(data_noclass, sample=args.sample_per_cls)
+    else:
+        print ('evaluate class-wise MS-SSMI score ...')
+        res_clswise = evalute(data, sample=args.sample_per_cls)
 
     Results = {
         'overall': res_overall,

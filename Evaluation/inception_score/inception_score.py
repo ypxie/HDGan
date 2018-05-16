@@ -1,21 +1,4 @@
-# Copyright 2016 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""A library to evaluate Inception on a single GPU.
-"""
 from PIL import Image
-
 from inception.slim import slim
 import numpy as np
 import tensorflow as tf
@@ -27,6 +10,7 @@ import pickle
 import glob
 import h5py
 import json
+from utils import load_data_from_h5, preprocess
 
 tf.app.flags.DEFINE_string('checkpoint_dir',
                            '',
@@ -57,20 +41,6 @@ fullpath = FLAGS.image_folder
 print(fullpath)
 
 
-def preprocess(img):
-    # print('img', img.shape, img.max(), img.min())
-    # img = Image.fromarray(img, 'RGB')
-    if len(img.shape) == 2:
-        img = np.resize(img, (img.shape[0], img.shape[1], 3))
-    img = scipy.misc.imresize(img, (299, 299, 3),
-                              interp='bilinear')
-    img = img.astype(np.float32)
-    # [0, 255] --> [0, 1] --> [-1, 1]
-    img = img / 127.5 - 1.
-    # print('img', img.shape, img.max(), img.min())
-    return np.expand_dims(img, 0)
-
-
 def get_inception_score(sess, images, pred_op):
     splits = FLAGS.splits
     # assert(type(images) == list)
@@ -94,7 +64,8 @@ def get_inception_score(sess, images, pred_op):
             # print('*****', img.shape)
             img = preprocess(img)
             inp.append(img)
-        print("%d of %d batches" % (i, n_batches)),
+        if i % 50 == 0:
+            print("%d of %d batches" % (i, n_batches), flush=True),
         sys.stdout.flush()
         # inp = inps[(i * bs):min((i + 1) * bs, len(inps))]
         inp = np.concatenate(inp, 0)
@@ -117,54 +88,6 @@ def get_inception_score(sess, images, pred_op):
     # print('mean:', "%.2f" % np.mean(scores), 'std:', "%.2f" % np.std(scores))
     return np.mean(scores), np.std(scores)
 
-
-def load_data_from_h5(fullpath):
-
-    # import pdb; pdb.set_trace()
-    
-    h5file = os.path.join(fullpath, FLAGS.h5_file)
-    return_path = os.path.join(fullpath, FLAGS.h5_file[:-3]+'_inception_score')
-    print ('read h5 from {}'.format(h5file))
-    assert(os.path.isfile(h5file))
-    fh = h5py.File(h5file, 'r')
-    
-    keys = [a for a in fh.keys() if 'output' in a]
-    ms_images = {a: [] for a in keys}
-
-    sample_names = []
-    classIDs = h5py.File(h5file)['classIDs']
-    cls_idx = 0
-    txt_idx = 0
-    sample_idx = 0
-    txt_idx_rest_iter = 10 if 'bird' in h5file else 26
-
-    print ('evaluate scale ', ms_images.keys())
-    for s, k in enumerate(ms_images.keys()):
-            
-        data = h5py.File(h5file)[k]
-        images = []
-        for i in range(data.shape[0]):
-            img = data[i]
-            # import pdb; pdb.set_trace()
-            assert((img.shape[0] in [256, 128, 64, 512]) and img.shape[2] == 3)
-            if not (img.min() >= 0 and img.max() <= 255 and img.mean() > 1):
-                print ('WARNING {}, min {}, max {}, mean {}'.format(i, img.min(), img.max(), img.mean()))
-                continue	
-            assert img.min() >= 0 and img.max() <= 255 and img.mean() > 1, '{}, min {}, max {}, mean {}'.format(i, img.min(), img.max(), img.mean())
-            images.append(img)
-            if s == 0: # only get sample_name at the first scale (others are the same)
-                sample_names.append('{}_{}_{}.jpg'.format(classIDs[sample_idx], txt_idx, sample_idx))
-                sample_idx += 1
-                if sample_idx % txt_idx_rest_iter == 0:
-                    txt_idx += 1
-
-        print ('read {} with {} images'.format(k, data.shape[0]))
-        ms_images[k] = images
-
-    print ('Totally {} images/scale are loaded at scales {}'.format(len(images), ms_images.keys() ))
-    assert(len(sample_names) == sample_idx)
-
-    return ms_images, return_path
 
 
 def inference(images, num_classes, for_training=False, restore_logits=True,
@@ -231,7 +154,6 @@ def main(unused_argv=None):
                 inputs = tf.placeholder(
                     tf.float32, [FLAGS.batch_size, 299, 299, 3],
                     name='inputs')
-                # print(inputs)
 
                 logits, _ = inference(inputs, num_classes)
                 # calculate softmax after remove 0 which reserve for BG
@@ -250,8 +172,7 @@ def main(unused_argv=None):
                 print('Restore the model from %s).' % FLAGS.checkpoint_dir)
                 # images = load_data(fullpath)
                 
-                ms_images, return_save_path = load_data_from_h5(fullpath)
-                # ms_images, return_save_path = load_data_from_h5_fakehr(fullpath)
+                ms_images, return_save_path = load_data_from_h5(fullpath, FLAGS.h5_file)
                 ms_means = {k:[] for k in ms_images.keys()}
                 ms_std = {k:[] for k in ms_images.keys()}
                 for scale, images in ms_images.items():
@@ -263,8 +184,6 @@ def main(unused_argv=None):
                 print (ms_means, ms_std)
                 json.dump({'mean': ms_means, 'std': ms_std}, open(return_save_path + '.json','w'), indent=True)
               
-
-                
 
 if __name__ == '__main__':
     tf.app.run()

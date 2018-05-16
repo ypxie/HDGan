@@ -1,15 +1,17 @@
 
 name='HDGAN_256'
-dataset='birds'
+dataset='coco'
 dir='../../Models/'${name}_$dataset
 mkdir -v $dir
 CUDA_VISIBLE_DEVICES=${device} python train_worker.py \
                                 --dataset $dataset \
-                                --batch_size 10 \
+                                --batch_size 8 \
                                 --model_name ${name} \
                                 --g_lr 0.0002 \
                                 --d_lr 0.0002 \
+                                --epoch_decay 50 \
+                                --KL_COE 2 \
+                                --gpus ${device} \
                                 | tee $dir/'log.txt'
 
-
-# To train HDGAN 512. Usually GPU memory is not enough. You need to train HDGAN_256 first and train 512 part by a stage
+# need about 200 epochs

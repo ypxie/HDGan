@@ -81,15 +81,15 @@ def train_nd(dataset, model_root, mode_name, img_encoder, vs_model, args):
             
             img_224     =  pre_process(images["output_256"], pool, trans_func)
             
-            embeddings  = to_device(np_embeddings, vs_model.device_id, requires_grad=False)
-            img_224     = to_device(img_224, img_encoder.device_id, volatile=True)
+            embeddings  = to_device(np_embeddings, requires_grad=False)
+            img_224     = to_device(img_224,  volatile=True)
             
             img_feat   = img_encoder(img_224)
             
             img_feat   = img_feat.squeeze(-1).squeeze(-1)
 
             
-            img_feat   = to_device(img_feat.data,vs_model.device_id, requires_grad=True)
+            img_feat   = to_device(img_feat.data, requires_grad=True)
             sent_emb, img_emb = vs_model(embeddings, img_feat)
             cost = PairwiseRankingLoss(img_emb, sent_emb, args.margin)
 

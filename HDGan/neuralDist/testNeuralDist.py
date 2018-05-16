@@ -52,11 +52,12 @@ def pre_process(images, pool, trans=None):
         this_img_tensor = targets.__next__()
         img_tensor_list.append(this_img_tensor)
 
-    img_tensor_all = torch.stack(img_tensor_list,0)
+    img_tensor_all = torch.stack(img_tensor_list, 0)
+    
     return img_tensor_all
 
 
-def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
+def test_nd(h5_path, weight_root, img_encoder, vs_model, args, target_resolution=256):
     h5_folder, h5_name = os.path.split(h5_path)
     h5_name_noext = os.path.splitext(h5_name)[0]
     result_path  = os.path.join(h5_folder, h5_name_noext+"_epoch_{}_neu_dist.json".format(args.load_from_epoch))
@@ -64,20 +65,17 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
     with h5py.File(h5_path,'r') as h5_data:
         pool = Pool(3)
         all_embeddings = h5_data["embedding"]
-        images = h5_data["output_256"]
         
-        all_keys = []
-        for this_key in h5_data.keys():
-            if "output" in this_key:
-                all_keys.append(this_key)
-        
+        # all_keys = []
+        # for this_key in h5_data.keys():
+        #     if "output" in this_key:
+        #         all_keys.append(this_key)
+
+        all_keys = ['output_'+str(target_resolution)]
         trans_func = get_trans(img_encoder)
-        model_folder = os.path.join(model_root, mode_name)
-        if not os.path.exists(model_folder):
-            os.makedirs(model_folder)
 
         ''' load model '''
-        weightspath = os.path.join(model_folder, 'W_epoch{}.pth'.format(args.load_from_epoch))
+        weightspath = os.path.join(weight_root, 'W_epoch{}.pth'.format(args.load_from_epoch))
         weights_dict = torch.load(weightspath, map_location=lambda storage, loc: storage)
         print('reload weights from {}'.format(weightspath))
         vs_model.load_state_dict(weights_dict)# 12)
@@ -92,34 +90,36 @@ def test_nd(h5_path, model_root, mode_name, img_encoder, vs_model, args):
             all_distance = 0
             all_cost_list = []
             print("Now processing {}".format(this_key))
+            n_processed = 0
             for thisInd in Indexflow(num_imgs, args.batch_size, random=False): #
+                
                 this_batch    = IndexH5(this_images, thisInd) 
                 np_embeddings = IndexH5(all_embeddings, thisInd)
 
                 img_299     =  pre_process(this_batch, pool, trans_func)
-                
-                embeddings  =  to_device(np_embeddings, vs_model.device_id, volatile=True)
-                img_299     =  to_device(img_299, img_encoder.device_id, volatile=True)
-               
+                embeddings  =  to_device(np_embeddings, volatile=True)
+                img_299     =  to_device(img_299, volatile=True)
                 img_feat    =  img_encoder(img_299)
-                
                 img_feat    =  img_feat.squeeze(-1).squeeze(-1)
-
-                img_feat   = to_device(img_feat.data,vs_model.device_id, volatile=True)
-
+                img_feat   = to_device(img_feat.data, volatile=True)
                 sent_emb, img_emb = vs_model(embeddings, img_feat)
                 
                 cost     = torch.sum(img_emb*sent_emb, 1, keepdim=False)
                 cost_val = cost.cpu().data.numpy()
                 all_cost_list.append(cost_val)
 
+                n_processed += args.batch_size
+                if n_processed % (50*args.batch_size) == 0:
+                    print('{}/{} processed'.format(n_processed, num_imgs))
+                
             all_cost = np.concatenate(all_cost_list, 0)    
             cost_mean = float(np.mean(all_cost))
             cost_std  = float(np.std(all_cost))
 
             all_results[this_key] = {"mean":cost_mean, "std":cost_std}
 
-        print(all_results)    
+        print(all_results)
+        print('save VS-Similarity results at', result_path)   
         with open(result_path, 'w') as f:
             json.dump(all_results, f)
         

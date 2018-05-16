@@ -1,7 +1,7 @@
 
 # evaluate birds
-name='neural_dist_birds'
-testing_path='../Results/birds/birds_256_testing_num_2/birds_256_G_epoch_500.h5'
+name='neudist_birds'
+testing_path='../Results/birds/birds_512_testing_num_10/birds_512_G_epoch_80.h5'
 CUDA_VISIBLE_DEVICES=${device} python neudist/neudist.py \
                         --dataset birds \
                         --testing_path ${testing_path} \
