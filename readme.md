@@ -46,20 +46,20 @@ We provide multiple evaluation tools to ease test. Evaluation needs the sampled 
 - Go to /Evaluation
 
 Inception score
-- Download [inception models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to compute inception scores.
+- Download [inception models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to the Evaluation/inception_score/inception_finetuned_models folder compute inception scores.
 - Compute the inception score: `sh compute_inception_score.sh`
 
 MS-SSIM
 - Compute the MS-SSIM score: `sh compute_ms_ssim.sh`
 
 VS-Similarity
-- Download [models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to Evaluation/neudist/neudist_[dataset]folder.
+- Download [models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0) to the Evaluation/neudist/neudist_[dataset] folder.
 - Evaluate the VS-smilarity score: `sh compute_neudist_score.sh` 
 
 
 ## Pretrained Models
 We provide pretrained models for birds, flowers, and coco.
-- Download the [pretrained models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0). Save them to Models.
+- Download the [pretrained models](https://www.dropbox.com/sh/lpzsvwabkw8d26g/AADFRKpTvbylhl0Q3PH78qzha?dl=0). Save them to the Models/ folder.
 - It contains HDGAN for birds and flowers, visual similarity model for birds and flowers
 
 
