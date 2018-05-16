@@ -14,8 +14,8 @@ model_root = os.path.join(proj_root, 'Models')
 import torch.nn as nn
 from collections import OrderedDict
 
-from HDGan.models.hd_networks_debug import Generator
-from HDGan.models.hd_networks_debug import Discriminator
+from HDGan.models.hd_networks import Generator
+from HDGan.models.hd_networks import Discriminator
 
 from HDGan.HDGan import train_gans
 from HDGan.fuel.datasets import Dataset

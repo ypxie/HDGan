@@ -11,10 +11,10 @@ HDGan/neuralDist/__pycache__
 HDGan/models/__pycache__
 HDGan/fuel/__pycache__
 HDGan/__pycache__
-Models/*
 Models_local/*
-Data/*
-Results/*
+Data_link
+Results/birds
+Results/coco
 *.swp
 .vscode
 *~
