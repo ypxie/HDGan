@@ -78,7 +78,7 @@ class plot_scalar(object):
             Y=values,
             win=self.name,
             update='append',
-            opts=dict(title=self.name, legend=None),
+            opts=dict(title=self.name, showlegend=True),
             env=self.env
         )
 
@@ -88,7 +88,7 @@ class plot_scalar(object):
                 Y=values,
                 win=self.name,
                 env=self.env,
-                opts=dict(title=self.name, legend=None)
+                opts=dict(title=self.name, showlegend=True)
             )
 
         self.reset()
