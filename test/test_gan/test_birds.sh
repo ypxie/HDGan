@@ -1,6 +1,6 @@
 ## test 512 resolution
 name='birds_512'
-CUDA_VISIBLE_DEVICES=${device} python test_worker.py \
+CUDA_VISIBLE_DEVICES="0" python test_worker.py \
                                     --dataset birds \
                                     --model_name ${name} \
                                     --load_from_epoch 80 \
@@ -10,7 +10,7 @@ CUDA_VISIBLE_DEVICES=${device} python test_worker.py \
 
 # test 256
 # name='HDGAN_256_birds'
-# CUDA_VISIBLE_DEVICES=${device} python test_worker.py \
+# CUDA_VISIBLE_DEVICES="0" python test_worker.py \
 #                                     --dataset birds \
 #                                     --model_name ${name} \
 #                                     --load_from_epoch 500 \
