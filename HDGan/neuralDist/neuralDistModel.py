@@ -15,10 +15,6 @@ def l2norm(input, p=2.0, dim=1, eps=1e-12):
     return l2_inp.expand_as(input)
 
 def xavier_weight(tensor):
-    if isinstance(tensor, Variable):
-        xavier_weight(tensor.data)
-        return tensor
-
     nin, nout = tensor.size()[0], tensor.size()[1]
     r = np.sqrt(6.) / np.sqrt(nin + nout)
     return tensor.normal_(0, r)
@@ -52,8 +48,8 @@ class ImgSenRanking(torch.nn.Module):
         self.init_weights()
 
     def init_weights(self):
-        xavier_weight(self.linear_img.weight)
-        xavier_weight(self.linear_sent.weight)
+        xavier_weight(self.linear_img.weight.data)
+        xavier_weight(self.linear_sent.weight.data)
         self.linear_img.bias.data.fill_(0)
         self.linear_sent.bias.data.fill_(0)
 
