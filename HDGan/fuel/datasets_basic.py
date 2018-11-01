@@ -239,3 +239,78 @@ class Dataset(object):
 
         return [sampled_images, sampled_embeddings_batchs, sampled_captions,
                 self.saveIDs[start:end], self.class_id[start:end]]
+
+
+
+class TestCase(object):
+    def __init__(self, file_path, img_size=256, batch_size=1, n_embed=1, mode='train'):
+        
+        self.file_path = file_path
+        self.image_shape = [img_size, img_size, 3]
+
+        self.batch_size = batch_size
+        self.n_embed = n_embed
+
+        self.imsize = min(img_size, 256)
+        self.get_data()
+
+        # set up sampler
+        self._train_index = 0
+        self._text_index = 0
+        self._perm = np.arange(self._num_examples)
+        np.random.shuffle(self._perm)
+        self.saveIDs = np.arange(self._num_examples)
+
+        print('>> Init basic TestCase loader ', file_path)
+        print('\t {} samples (batch_size = {})'.format(self._num_examples, self.batch_size))
+        print('\t {} output resolutions'.format(img_size))
+        print ('\t {} embeddings used'.format(n_embed))
+        
+    def get_data(self):
+        
+        with open(self.file_path, 'rb') as f:
+            data = pickle.load(f)
+        captions = []
+        embeddings = []
+        for item in data:
+            captions.append(item['caption'])
+            embeddings.append(item['embedding'])
+        self.captions = captions
+        self.embeddings = np.array(embeddings)
+        print('embeddings: ', self.embeddings.shape)
+
+        self._num_examples = len(self.captions)
+        self.images = np.random.rand(self.batch_size,256,256,3) * 255
+        self.class_id = [a for a in range(self._num_examples)]
+        self.filenames = self.class_id
+        self.saveIDs = self.class_id
+        
+    def __iter__(self):
+        return self
+
+    def next_batch_test(self, max_captions=1):
+        """Return the next `batch_size` examples from this data set."""
+        batch_size = self.batch_size
+        
+        start = self._text_index
+        if (start + batch_size) > self._num_examples:
+            end = self._num_examples
+            self._text_index = 0
+        else:
+            end = start + batch_size
+        self._text_index += batch_size
+
+        sampled_images = self.images[:end-start]
+        
+        sampled_embeddings = self.embeddings[start:end]
+        _, embedding_num, _ = sampled_embeddings.shape
+        sampled_embeddings_batchs = []
+        
+        sampled_captions = [[str(a)] for a in self.captions[start:end]]
+
+        for i in range(np.minimum(max_captions, embedding_num)):
+            batch = sampled_embeddings[:, i, :]
+            sampled_embeddings_batchs.append(batch)
+
+        return [sampled_images, sampled_embeddings_batchs, sampled_captions,
+                self.saveIDs[start:end], self.class_id[start:end]]

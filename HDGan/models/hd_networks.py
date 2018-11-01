@@ -153,7 +153,7 @@ class Sent2FeatMap(nn.Module):
         super(Sent2FeatMap, self).__init__()
         self.__dict__.update(locals())
         out_dim = row*col*channel
-        norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
+        norm_layer = functools.partial(nn.BatchNorm1d, affine=True)
         _layers = [nn.Linear(in_dim, out_dim)]
         _layers += [norm_layer(out_dim)]
         if activ is not None:

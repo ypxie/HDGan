@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 from HDGan.proj_utils.local_utils import mkdirs
 from HDGan.HDGan_test import test_gans
-from HDGan.fuel.datasets import Dataset
+from HDGan.fuel.datasets import Dataset, getTestCase
 
 from HDGan.models.hd_networks import Generator
 
@@ -42,6 +42,8 @@ if  __name__ == '__main__':
                         help='The number of runs for each embeddings when testing')
     parser.add_argument('--save_visual_results', action='store_true',
                         help='if save visual results in folders')
+    parser.add_argument('--testpickle', type=str, default='')
+    parser.add_argument('--fixed_z', action='store_true', help='use fixed z')
 
     args = parser.parse_args()
     
@@ -61,11 +63,14 @@ if  __name__ == '__main__':
         netG = netG.cuda(device_id)
         import torch.backends.cudnn as cudnn
         cudnn.benchmark = True
-
-    dataset = Dataset(datadir, img_size=args.finest_size, batch_size=args.batch_size, n_embed=1, mode='test', multithread=False)
     model_name = args.model_name  
+    if args.testpickle == '':
+        dataset = Dataset(datadir, img_size=args.finest_size, batch_size=args.batch_size, n_embed=1, mode='test', multithread=False)
+        save_folder = os.path.join(save_root, args.dataset, model_name + '_testing_num_{}'.format(args.test_sample_num) )
+    else:
+        dataset = getTestCase(args.testpickle, batch_size=args.batch_size)
+        save_folder = os.path.join(save_root, args.dataset, model_name + '_testing_num_{}_testpickle'.format(args.test_sample_num) )
     
-    save_folder  = os.path.join(save_root, args.dataset, model_name + '_testing_num_{}'.format(args.test_sample_num) )
     mkdirs(save_folder)
     
     test_gans(dataset, model_root, model_name, save_folder, netG, args)

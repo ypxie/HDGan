@@ -45,7 +45,11 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
     ## TODO note that strict is set to false for now. It is a bit risky
     netG.load_state_dict(weights_dict, strict=False)
 
-    testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
+    if not args.fixed_z:
+        testing_z = torch.FloatTensor(args.batch_size, args.noise_dim).normal_(0, 1)
+    else:
+        testing_z = torch.FloatTensor(1, args.noise_dim).normal_(0, 1)
+        testing_z = testing_z.repeat(args.batch_size, 1)
     testing_z = to_device(testing_z)
 
     num_examples = dataset._num_examples
@@ -96,12 +100,13 @@ def test_gans(dataset, model_root, mode_name, save_root , netG,  args):
             for t in range(args.test_sample_num):
                 
                 B = len(test_embeddings_list)
-                ridx = random.randint(0, B-1)
-                testing_z.data.normal_(0, 1)
+                ridx = random.randint(0, B - 1)
+                if not args.fixed_z:
+                    testing_z.data.normal_(0, 1) 
 
                 this_test_embeddings_np = test_embeddings_list[ridx]
-                this_test_embeddings    = to_device(this_test_embeddings_np)
-                test_outputs, _         = to_img_dict(netG(this_test_embeddings, testing_z[0:this_batch_size]))
+                this_test_embeddings = to_device(this_test_embeddings_np)
+                test_outputs, _         = to_img_dict(netG(this_test_embeddings, testing_z[:this_batch_size]))
                 
                 if  t == 0: 
                     if init_flag is True:
@@ -203,7 +208,7 @@ def save_super_images(vis_samples, captions_batch, batch_size, save_folder, save
             valid_IDS.append(saveIDs[j])
             valid_classIDS.append(classIDs[j])
 
-    for typ, img_list in vis_samples.items(): 
+    for typ, img_list in vis_samples.items():
         img_tensor = np.stack(img_list, 1) # N * T * 3 *row*col
         img_tensor = img_tensor.transpose(0,1,3,4,2)
         img_tensor = (img_tensor + 1.0) * 127.5
